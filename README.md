@@ -27,7 +27,7 @@ Here we display an example of whole slide image with 1,000 tiles highlighted in 
 
 Some of those tiles are displayed below. The coordinates are indicated in parenthesis for each tile.
 
-<img src='./images/brca_tiles.png' width='500'>
+<img src='./images/brca_tiles.jpeg' width='500'>
 
 *Figure 2: Example of 224x224 pixels tiles extracted at a 20x magnification with their (x, y)-coordinates*
 
