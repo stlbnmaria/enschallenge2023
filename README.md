@@ -21,13 +21,13 @@ In this challenge, we aim to predict whether a patient has a mutation of the gen
 
 Here we display an example of whole slide image with 1,000 tiles highlighted in black.
 
-<!---![plot](./directory_1/directory_2/.../directory_n/plot.png)-->
+![plot](./images/brca_tiling.png)
 
 *Figure 1: Example of a whole slide image with the 1,000 tiles selected during preprocessing highlighted in black*
 
 Some of those tiles are displayed below. The coordinates are indicated in parenthesis for each tile.
 
-<!---![plot](./directory_1/directory_2/.../directory_n/plot.png)-->
+![plot](./iamges/brca_tiles.png)
 
 *Figure 2: Example of 224x224 pixels tiles extracted at a 20x magnification with their (x, y)-coordinates*
 
