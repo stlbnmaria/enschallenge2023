@@ -8,9 +8,11 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 
 
-def load_train_data(metadata: pd.DataFrame):
-    data_dir = Path("./storage/")
-    train_features_dir = data_dir / "train_input" / "moco_features"
+def load_train_data(metadata: pd.DataFrame, data_path=Path("../storage/")):
+    """
+    This function loads the MoCov features for training.
+    """
+    train_features_dir = data_path / "train_input" / "moco_features"
 
     X_train = []
     y_train = []
@@ -24,7 +26,7 @@ def load_train_data(metadata: pd.DataFrame):
         _features = np.load(train_features_dir / sample)
         # get coordinates (zoom level, tile x-coord on the slide, tile y-coord on the slide)
         # and the MoCo V2 features
-        coordinates, features = _features[:, :3], _features[:, 3:]  # Ks
+        _, features = _features[:, :3], _features[:, 3:]  # Ks
         # slide-level averaging
         X_train.append(np.mean(features, axis=0))
         y_train.append(label)
@@ -34,21 +36,21 @@ def load_train_data(metadata: pd.DataFrame):
     # convert to numpy arrays
     X_train = np.array(X_train)
     y_train = np.array(y_train)
-    # TODO: think of ways to use the centers in training
-    # centers_train = np.array(centers_train)
     patients_train = np.array(patients_train)
     patients_unique = np.unique(patients_train)
     y_unique = np.array(
         [np.mean(y_train[patients_train == p]) for p in patients_unique]
     )
-    # centers_unique = np.array(
-    #     [centers_train[patients_train == p][0] for p in patients_unique]
-    # )
     return X_train, y_train, patients_unique, y_unique, patients_train
 
 
-
-def train_mocov_features(model, X_train, y_train, patients_unique, y_unique, patients_train):
+def train_mocov_features(
+    model, X_train, y_train, patients_unique, y_unique, patients_train
+):
+    """
+    This function trains any model of 5-fold cv on the mocov features 
+    and returns a list of models (one for every fold).
+    """
     aucs = []
     lrs = []
     # 5-fold CV is repeated 5 times with different random states
@@ -91,9 +93,7 @@ def train_mocov_features(model, X_train, y_train, patients_unique, y_unique, pat
     return lrs
 
 
-
-def load_avg_test_mocov_features():
-    data_path = Path("./storage/")
+def load_avg_test_mocov_features(data_path=Path("../storage/")):
     test_features_dir = data_path / "test_input" / "moco_features"
 
     md_test = pd.read_csv(data_path / "supplementary_data" / "test_metadata.csv")
@@ -109,6 +109,11 @@ def load_avg_test_mocov_features():
 
 
 def predict_cv_classifiers(lrs: list):
+    """
+    This function takes a list of classifiers trained on crossvalidation,
+    predicts the target for every cv-classifier and averages over this
+    prediction to create the final prediction.
+    """
     X_test = load_avg_test_mocov_features()
 
     preds_test = 0
@@ -120,13 +125,17 @@ def predict_cv_classifiers(lrs: list):
     return preds_test
 
 
-def store_submission(preds: np.array, sub_name: str):
+def store_submission(
+    preds: np.array,
+    sub_name: str,
+    data_path=Path("../storage"),
+    submission_path=Path("../submissions"),
+):
     """
-    This functions combines the sample ids in the test data set and the 
+    This functions combines the sample ids in the test data set and the
     predictions from an ML model to save a csv that can be directly uploaded
     to the submission platform.
     """
-    data_path = Path("./storage/")
     md_test = pd.read_csv(data_path / "supplementary_data" / "test_metadata.csv")
 
     submission = pd.DataFrame(
@@ -150,5 +159,5 @@ def store_submission(preds: np.array, sub_name: str):
     t = time.localtime()
     timestamp = time.strftime("%Y-%m-%d-%H%M", t)
     submission.to_csv(
-        Path("./submissions") / f"{timestamp}_{sub_name}_output.csv", index=None
+        submission_path / f"{timestamp}_{sub_name}_output.csv", index=None
     )
