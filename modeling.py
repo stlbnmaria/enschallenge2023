@@ -22,9 +22,17 @@ def load_avg_test_mocov_features():
     return np.array(X_test)
 
 
-def store_submission(test_data, preds, sub_name: str):
+def store_submission(preds: np.array, sub_name: str):
+    """
+    This functions combines the sample ids in the test data set and the 
+    predictions from an ML model to save a csv that can be directly uploaded
+    to the submission platform.
+    """
+    data_path = Path("./storage/")
+    md_test = pd.read_csv(data_path / "supplementary_data" / "test_metadata.csv")
+
     submission = pd.DataFrame(
-        {"Sample ID": test_data["Sample ID"].values, "Target": preds}
+        {"Sample ID": md_test["Sample ID"].values, "Target": preds}
     ).sort_values(
         "Sample ID"
     )  # extra step to sort the sample IDs
