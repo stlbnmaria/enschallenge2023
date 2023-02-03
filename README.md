@@ -65,3 +65,11 @@ $$AUC = \frac{1}{N_0N_1}\sum_{i \in I_1}\sum_{j \in I_0}1_{\tilde{y}_i > \tilde{
 where $I_1$ is the set of indices of the N₁ patients with label 1 (presence of mutation), $I_0$ the set of indices of the $N_0$ patients with label 0 and $\tilde{y}_i$ the predicted mutation probability for sample i. A score of 0.5 represents a random prediction and a score of 1.0 represents perfect predictions.
 
 
+## Possibly useful Papers
+- Identify PIK3CA Mutation Status in Breast Cancer on Ultrasound Image (2022): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9204315/
+- Prediction of clinically actionable genetic alterations from colorectal cancer histopathology images (2020): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7596644/
+- Prediction of genetic alterations from gastric cancer histopathology images (2021): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8641056/
+- Optimization of deep learning models for the prediction of gene mutations using unsupervised clustering (2022): https://onlinelibrary.wiley.com/doi/full/10.1002/cjp2.302
+- A weakly supervised deep learning-based method for glioma subtype classification using WSI and mpMRIs (2022): https://www.nature.com/articles/s41598-022-09985-1
+- Benchmarking weakly-supervised deep learning pipelines for whole slide classification in computational pathology (2022): https://www.sciencedirect.com/science/article/pii/S1361841522001219
+- Development and validation of a weakly supervised deep learning framework to predict the status of molecular pathways and key mutations in colorectal cancer from routine histology images: a retrospective study (2021): https://www.sciencedirect.com/science/article/pii/S2589750021001801
