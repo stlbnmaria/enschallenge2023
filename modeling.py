@@ -8,6 +8,12 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 
 
+# TODO: try not to average tiles before modeling, but afterwards for every patient for prediction
+# TODO: aggregate classifier differently? - e.g. instead of average use second layer model
+# TODO: incorporate the different centers to take into account heterogenity
+# TODO: try different ML models and tune them
+
+
 def load_train_data(metadata: pd.DataFrame, data_path=Path("../storage/")):
     """
     This function loads the MoCov features for training.
