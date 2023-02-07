@@ -75,3 +75,6 @@ where $I_1$ is the set of indices of the N₁ patients with label 1 (presence of
 - Prediction of clinically actionable genetic alterations from colorectal cancer histopathology images (2020): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7596644/
 - Prediction of genetic alterations from gastric cancer histopathology images (2021): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8641056/
 - Optimization of deep learning models for the prediction of gene mutations using unsupervised clustering (2022): https://onlinelibrary.wiley.com/doi/full/10.1002/cjp2.302
+
+## Latex Report
+https://www.overleaf.com/project/63e22705159f324cc7095314
