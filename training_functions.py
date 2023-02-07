@@ -6,6 +6,8 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 
+from modeling.tabular_models import get_tabular_estimator
+
 
 # TODO: try not to average tiles before modeling, but afterwards for every patient for prediction
 # TODO: aggregate classifier differently? - e.g. instead of average use second layer model
@@ -13,40 +15,38 @@ from sklearn.metrics import roc_auc_score
 # TODO: try different ML models and tune them
 
 
-def load_train_data(metadata: pd.DataFrame, data_path=Path("./storage/")):
-    """
-    This function loads the MoCov features for training.
-    """
-    train_features_dir = data_path / "train_input" / "moco_features"
+def load_train_data(data_path=Path("./storage/"), tile_averaging: bool=True):
+    input = np.load(data_path / "train_input" / "mocov_features_train.npz")
+    metadata = input["metadata"]
+    feat = input["features"].astype(float)
+    y_train = metadata[:, 0].astype(float)
+    patients_train = metadata[:, 1]
+    samples_train = metadata[:, 2]
+    centers_train = metadata[:, 3]
 
-    X_train = []
-    y_train = []
-    centers_train = []
-    patients_train = []
+    if tile_averaging:
+        X_train = [np.mean(feat[samples_train == sample], axis=0) for sample in np.unique(samples_train)]
+        X_train = np.array(X_train)
 
-    for sample, label, center, patient in tqdm(
-        metadata[["Sample ID", "Target", "Center ID", "Patient ID"]].values
-    ):
-        # load the coordinates and features (1000, 3+2048)
-        _features = np.load(train_features_dir / sample)
-        # get coordinates (zoom level, tile x-coord on the slide, tile y-coord on the slide)
-        # and the MoCo V2 features
-        _, features = _features[:, :3], _features[:, 3:]  # Ks
-        # slide-level averaging
-        X_train.append(np.mean(features, axis=0))
-        y_train.append(label)
-        centers_train.append(center)
-        patients_train.append(patient)
+        y_train = [np.unique(y_train[samples_train == sample]) for sample in np.unique(samples_train)]
+        y_train = np.array(y_train).flatten()
 
-    # convert to numpy arrays
-    X_train = np.array(X_train)
-    y_train = np.array(y_train)
-    patients_train = np.array(patients_train)
+        patients_train = [np.unique(patients_train[samples_train == sample]) for sample in np.unique(samples_train)]
+        patients_train = np.array(patients_train).flatten()
+
+        centers_train = [np.unique(centers_train[samples_train == sample]) for sample in np.unique(samples_train)]
+        centers_train = np.array(centers_train)
+
+        samples_train = np.unique(samples_train)
+    else:
+        X_train = feat
+
     patients_unique = np.unique(patients_train)
     y_unique = np.array(
         [np.mean(y_train[patients_train == p]) for p in patients_unique]
     )
-    return X_train, y_train, patients_unique, y_unique, patients_train
+
+    return X_train, y_train, patients_unique, y_unique, patients_train, samples_train
 
 
 def train_mocov_features(
@@ -128,3 +128,26 @@ def predict_cv_classifiers(lrs: list):
     # and take the average (ensembling technique)
     preds_test = preds_test / len(lrs)
     return preds_test
+
+
+def train_tabular(model: str):
+    estimator = get_tabular_estimator(model)
+
+    # data_path = Path("./storage")
+    # output = pd.read_csv(data_path / "train_output.csv")
+    # md_train = pd.read_csv(data_path / "supplementary_data" / "train_metadata.csv")
+    # output_md = md_train.merge(output, on="Sample ID")
+
+    (
+        X_train,
+        y_train,
+        patients_unique,
+        y_unique,
+        patients_train,
+        samples_train,
+    ) = load_train_data()
+    lrs = train_mocov_features(
+        estimator, X_train, y_train, patients_unique, y_unique, patients_train
+    )
+    preds = predict_cv_classifiers(lrs)
+    return preds
