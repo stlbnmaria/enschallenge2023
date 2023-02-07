@@ -13,7 +13,7 @@ from sklearn.metrics import roc_auc_score
 # TODO: try different ML models and tune them
 
 
-def load_train_data(metadata: pd.DataFrame, data_path=Path("../storage/")):
+def load_train_data(metadata: pd.DataFrame, data_path=Path("./storage/")):
     """
     This function loads the MoCov features for training.
     """
@@ -98,7 +98,7 @@ def train_mocov_features(
     return lrs
 
 
-def load_avg_test_mocov_features(data_path=Path("../storage/")):
+def load_avg_test_mocov_features(data_path=Path("./storage/")):
     test_features_dir = data_path / "test_input" / "moco_features"
 
     md_test = pd.read_csv(data_path / "supplementary_data" / "test_metadata.csv")

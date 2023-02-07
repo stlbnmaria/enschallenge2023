@@ -8,8 +8,8 @@ import pandas as pd
 def store_submission(
     preds: np.array,
     sub_name: str,
-    data_path=Path("../storage"),
-    submission_path=Path("../submissions"),
+    data_path=Path("./storage"),
+    submission_path=Path("./submissions"),
 ):
     """
     This functions combines the sample ids in the test data set and the
