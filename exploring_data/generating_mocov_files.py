@@ -52,7 +52,7 @@ def write_mocov_train(data_path=Path("../storage")):
 
 def write_mocov_test(data_path=Path("../storage")):
     """
-    This function loads the MoCov features for training and stores one
+    This function loads the MoCov features for testing and stores one
     compressed numpy file incl. all tile values.
     """
     metadata = pd.read_csv(data_path / "supplementary_data" / "test_metadata.csv")

@@ -15,6 +15,10 @@ from modeling.tabular_models import get_tabular_estimator
 
 
 def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool=True):
+    """
+    This function loads the MoCov features full file for training and
+    performs averaging over the tiles per sample as default.
+    """
     input = np.load(data_path / "train_input" / "mocov_features_train.npz")
     metadata = input["metadata"]
     feat = input["features"].astype(float)
@@ -103,6 +107,10 @@ def train_mocov_features(
 
 
 def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool=True):
+    """
+    This function loads the MoCov features full file for testing and
+    performs averaging over the tiles per sample as default.
+    """
     input = np.load(data_path / "test_input" / "mocov_features_test.npz")
     metadata = input["metadata"]
     feat = input["features"].astype(float)
