@@ -152,7 +152,7 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True,):
             preds_test += lr.predict_proba(X_test)[:, 1]
         else:
             temp = lr.predict_proba(X_test)[:, 1]
-            temp = [np.mean(temp[samples_test == sample]) for sample in samples_test]
+            temp = np.array([np.mean(temp[samples_test == sample]) for sample in samples_test])
             preds_test += temp
 
     # and take the average (ensembling technique)
