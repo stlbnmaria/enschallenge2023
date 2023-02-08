@@ -2,7 +2,7 @@ from xgboost import XGBClassifier
 
 
 def xgb_estimator():
-    estimator = XGBClassifier()
+    estimator = XGBClassifier(subsample=0.8, colsample_bylevel=0.3)
     return estimator
 
 def get_tabular_estimator(model: str):

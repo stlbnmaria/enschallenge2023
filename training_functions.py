@@ -50,7 +50,7 @@ def load_train_data(data_path=Path("./storage/"), tile_averaging: bool=True):
 
 
 def train_mocov_features(
-    model, X_train, y_train, patients_unique, y_unique, patients_train
+    model, X_train, y_train, patients_unique, y_unique, patients_train, samples_train, tile_avg: bool = True,
 ):
     """
     This function trains any model of 5-fold cv on the mocov features 
@@ -77,12 +77,21 @@ def train_mocov_features(
             y_fold_train = y_train[train_idx]
             X_fold_val = X_train[val_idx]
             y_fold_val = y_train[val_idx]
+            print(f"Started Training for {fold}")
             # instantiate the model
             lr = model
             # fit it
             lr.fit(X_fold_train, y_fold_train)
+
+            print(f"Training done for {fold}")
+
             # get the predictions (1-d probability)
             preds_val = lr.predict_proba(X_fold_val)[:, 1]
+
+            if not tile_avg:
+                samples_val = samples_train[val_idx]
+                preds_val = [np.mean(preds_val[samples_val == sample]) for sample in samples_val]
+
             # compute the AUC score using scikit-learn
             auc = roc_auc_score(y_fold_val, preds_val)
             print(f"AUC on split {k} fold {fold}: {auc:.3f}")
@@ -131,12 +140,10 @@ def predict_cv_classifiers(lrs: list):
 
 
 def train_tabular(model: str):
+    """
+    This function trains the tabular data.
+    """
     estimator = get_tabular_estimator(model)
-
-    # data_path = Path("./storage")
-    # output = pd.read_csv(data_path / "train_output.csv")
-    # md_train = pd.read_csv(data_path / "supplementary_data" / "train_metadata.csv")
-    # output_md = md_train.merge(output, on="Sample ID")
 
     (
         X_train,
@@ -145,9 +152,9 @@ def train_tabular(model: str):
         y_unique,
         patients_train,
         samples_train,
-    ) = load_train_data()
+    ) = load_train_data(tile_averaging=False)
     lrs = train_mocov_features(
-        estimator, X_train, y_train, patients_unique, y_unique, patients_train
+        estimator, X_train, y_train, patients_unique, y_unique, patients_train, samples_train, tile_avg=False
     )
     preds = predict_cv_classifiers(lrs)
     return preds
