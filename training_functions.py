@@ -88,7 +88,8 @@ def train_mocov_features(
 
         if not tile_avg:
             samples_val = samples_train[val_idx]
-            preds_val = [np.mean(preds_val[samples_val == sample]) for sample in samples_val]
+            preds_val = [np.mean(preds_val[samples_val == sample]) for sample in np.unique(samples_val)]
+            y_fold_val = [np.mean(y_fold_val[samples_val == sample]) for sample in np.unique(samples_val)]
 
         # compute the AUC score using scikit-learn
         auc = roc_auc_score(y_fold_val, preds_val)
@@ -143,6 +144,7 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True,):
     prediction to create the final prediction.
     """
     X_test, _, _, samples_test = load_mocov_test_data(tile_averaging=tile_avg)
+    samples_unique = np.unique(samples_test)
 
     preds_test = 0
     # loop over the classifiers
@@ -151,7 +153,8 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True,):
             preds_test += lr.predict_proba(X_test)[:, 1]
         else:
             temp = lr.predict_proba(X_test)[:, 1]
-            temp = np.array([np.mean(temp[samples_test == sample]) for sample in samples_test])
+            temp = np.array([np.mean(temp[samples_test == sample]) for sample in samples_unique])
+            assert temp.shape[0] == (149)
             preds_test += temp
 
     # and take the average (ensembling technique)
