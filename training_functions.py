@@ -52,7 +52,7 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool=Tru
 
 
 def train_mocov_features(
-    model, X_train, y_train, patients_unique, y_unique, patients_train, samples_train, tile_avg: bool = True,
+    model, X_train, y_train, patients_unique, y_unique, patients_train, samples_train, tile_avg: bool = True, rep_cv: int = 5
 ):
     """
     This function trains any model of 5-fold cv on the mocov features 
@@ -60,47 +60,48 @@ def train_mocov_features(
     """
     aucs = []
     lrs = []
-    # 5-fold CV
-    kfold = StratifiedKFold(5, shuffle=True, random_state=72)
-    fold = 0
-    # split is performed at the patient-level
-    for train_idx_, val_idx_ in kfold.split(patients_unique, y_unique):
-        # retrieve the indexes of the samples corresponding to the
-        # patients in `train_idx_` and `test_idx_`
-        train_idx = np.arange(len(X_train))[
-            pd.Series(patients_train).isin(patients_unique[train_idx_])
-        ]
-        val_idx = np.arange(len(X_train))[
-            pd.Series(patients_train).isin(patients_unique[val_idx_])
-        ]
-        # set the training and validation folds
-        X_fold_train = X_train[train_idx]
-        y_fold_train = y_train[train_idx]
-        X_fold_val = X_train[val_idx]
-        y_fold_val = y_train[val_idx]
-        # instantiate the model
-        lr = model
-        # fit it
-        lr.fit(X_fold_train, y_fold_train)
+    # 5-fold CV is repeated 5 times with different random states
+    for k in range(rep_cv):
+        kfold = StratifiedKFold(5, shuffle=True, random_state=k)
+        fold = 0
+        # split is performed at the patient-level
+        for train_idx_, val_idx_ in kfold.split(patients_unique, y_unique):
+            # retrieve the indexes of the samples corresponding to the
+            # patients in `train_idx_` and `test_idx_`
+            train_idx = np.arange(len(X_train))[
+                pd.Series(patients_train).isin(patients_unique[train_idx_])
+            ]
+            val_idx = np.arange(len(X_train))[
+                pd.Series(patients_train).isin(patients_unique[val_idx_])
+            ]
+            # set the training and validation folds
+            X_fold_train = X_train[train_idx]
+            y_fold_train = y_train[train_idx]
+            X_fold_val = X_train[val_idx]
+            y_fold_val = y_train[val_idx]
+            # instantiate the model
+            lr = model
+            # fit it
+            lr.fit(X_fold_train, y_fold_train)
 
-        # get the predictions (1-d probability)
-        preds_val = lr.predict_proba(X_fold_val)[:, 1]
+            # get the predictions (1-d probability)
+            preds_val = lr.predict_proba(X_fold_val)[:, 1]
 
-        if not tile_avg:
-            samples_val = samples_train[val_idx]
-            preds_val = [np.mean(preds_val[samples_val == sample]) for sample in np.unique(samples_val)]
-            y_fold_val = [np.mean(y_fold_val[samples_val == sample]) for sample in np.unique(samples_val)]
+            if not tile_avg:
+                samples_val = samples_train[val_idx]
+                preds_val = [np.mean(preds_val[samples_val == sample]) for sample in np.unique(samples_val)]
+                y_fold_val = [np.mean(y_fold_val[samples_val == sample]) for sample in np.unique(samples_val)]
 
-        # compute the AUC score using scikit-learn
-        auc = roc_auc_score(y_fold_val, preds_val)
-        print(f"AUC on fold {fold}: {auc:.3f}")
-        aucs.append(auc)
-        # add the logistic regression to the list of classifiers
-        lrs.append(lr)
-        fold += 1
-    print("----------------------------")
+            # compute the AUC score using scikit-learn
+            auc = roc_auc_score(y_fold_val, preds_val)
+            print(f"AUC on split {k} fold {fold}: {auc:.3f}")
+            aucs.append(auc)
+            # add the logistic regression to the list of classifiers
+            lrs.append(lr)
+            fold += 1
+        print("----------------------------")
     print(
-        f"5-fold cross-validated AUC averaged: "
+        f"5-fold cross-validated AUC averaged over {k+1} repeats: "
         f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
     )
     return lrs
@@ -137,7 +138,7 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool=True
     return X_test, patients_unique, patients_test, samples_test
 
 
-def predict_cv_classifiers(lrs: list, tile_avg: bool = True,):
+def predict_cv_classifiers(lrs: list, tile_avg: bool = True):
     """
     This function takes a list of classifiers trained on crossvalidation,
     predicts the target for every cv-classifier and averages over this
