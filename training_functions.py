@@ -114,9 +114,20 @@ def train_mocov_features(
             lr.fit(X_fold_train, y_fold_train)
 
             # get the predictions (1-d probability)
+            preds_train = lr.predict_proba(X_fold_train)[:, 1]
             preds_val = lr.predict_proba(X_fold_val)[:, 1]
 
             if not tile_avg:
+                samples_fold = samples_train[train_idx_]
+                preds_train = [
+                    np.mean(preds_train[samples_fold == sample])
+                    for sample in np.unique(samples_fold)
+                ]
+                y_fold_train = [
+                    np.mean(y_fold_train[samples_fold == sample])
+                    for sample in np.unique(samples_fold)
+                ]
+
                 samples_val = samples_train[val_idx_]
                 preds_val = [
                     np.mean(preds_val[samples_val == sample])
@@ -128,9 +139,10 @@ def train_mocov_features(
                 ]
 
             # compute the AUC score using scikit-learn
-            auc = roc_auc_score(y_fold_val, preds_val)
-            print(f"AUC on split {k} fold {fold}: {auc:.3f}")
-            aucs.append(auc)
+            train_auc = roc_auc_score(y_fold_train, preds_train)
+            test_auc = roc_auc_score(y_fold_val, preds_val)
+            print(f"AUC on split {k} fold {fold}: Train - {train_auc:.3f}, Val - {test_auc:.3f}")
+            aucs.append(test_auc)
             # add the logistic regression to the list of classifiers
             lrs.append(lr)
             fold += 1
