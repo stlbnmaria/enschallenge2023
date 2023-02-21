@@ -9,7 +9,7 @@ def logreg_estimator():
 
 
 def xgb_estimator():
-    estimator = XGBClassifier(colsample_bylevel=0.2)
+    estimator = XGBClassifier()
     return estimator
 
 def catboost_estimator():

@@ -81,7 +81,7 @@ def train_mocov_features(
     samples_train,
     centers_train,
     tile_avg: bool = True,
-    rep_cv: int = 5,
+    rep_cv: int = 1,
 ):
     """
     This function trains any model of 5-fold cv on the mocov features
