@@ -1,5 +1,4 @@
 from catboost import CatBoostClassifier
-from lce import LCEClassifier
 from lightgbm import LGBMClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
@@ -16,12 +15,11 @@ def get_tabular_estimator(model: str):
         "ExtraTrees": ExtraTreesClassifier(),
         "XGB": XGBClassifier(),
         "Catboost": CatBoostClassifier(verbose=0), 
-        "LightGBM": LGBMClassifier(), 
-        "LCE": LCEClassifier(),      
+        "LightGBM": LGBMClassifier(),  
     }
 
     # get estimator based on specified specified model
     try:
-        estimator = estimators[model]
+        return estimators[model]
     except:
         print("The specified model is not valid")
