@@ -75,6 +75,8 @@ def pred_aggregation(values: np.array, agg_over: np.array, agg_by: str = "mean")
 
     if agg_by == "mean": 
         preds = [np.mean(values[agg_over == sample]) for sample in agg_unique]
+    elif agg_by == "median": 
+        preds = [np.median(values[agg_over == sample]) for sample in agg_unique]
     elif agg_by == "max": 
         preds = [np.max(values[agg_over == sample]) for sample in agg_unique]
     elif agg_by == "min": 
@@ -107,31 +109,21 @@ def train_mocov_features(
         fold = 0
         # split is performed at the patient-level
         for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
-            # retrieve the indexes of the samples corresponding to the
-            # patients in `train_idx_` and `test_idx_`
-            # train_idx = np.arange(len(X_train))[
-            #     pd.Series(patients_train).isin(patients_unique[train_idx_])
-            # ]
-            # val_idx = np.arange(len(X_train))[
-            #     pd.Series(patients_train).isin(patients_unique[val_idx_])
-            # ]
             # set the training and validation folds
             X_fold_train = X_train[train_idx_]
             y_fold_train = y_train[train_idx_]
             X_fold_val = X_train[val_idx_]
             y_fold_val = y_train[val_idx_]
             samples_fold = samples_train[train_idx_]
-            val_center = np.unique(centers_train[val_idx_])
+            val_center = np.unique(centers_train[val_idx_])[0]
 
-            if not tile_avg and subsampling:
-                print(X_fold_train.shape)
+            if subsampling:
                 df = pd.DataFrame({"id": samples_fold})
                 df.reset_index(inplace=True, drop=True)
-                sub_index = df.groupby("id").sample(frac=0.5, random_state=0).index
+                sub_index = df.groupby("id").sample(frac=0.8, random_state=0).index
                 X_fold_train = X_fold_train[sub_index]
                 y_fold_train = y_train[sub_index]
                 samples_fold = samples_fold[sub_index]
-                print(X_fold_train.shape)
 
             # instantiate the model
             lr = model
@@ -206,13 +198,13 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Tr
     return X_test, patients_unique, patients_test, samples_test
 
 
-def predict_cv_classifiers(lrs: list, tile_avg: bool = True):
+def predict_cv_classifiers(lrs: list, tile_avg: bool = True, data_path=Path("./storage/")):
     """
     This function takes a list of classifiers trained on crossvalidation,
     predicts the target for every cv-classifier and averages over this
     prediction to create the final prediction.
     """
-    X_test, _, _, samples_test = load_mocov_test_data(tile_averaging=tile_avg)
+    X_test, _, _, samples_test = load_mocov_test_data(data_path=data_path, tile_averaging=tile_avg)
 
     preds_test = 0
     # loop over the classifiers
@@ -230,7 +222,7 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True):
     return preds_test
 
 
-def train_tabular(model: str):
+def train_tabular(model: str, data_path=Path("./storage/")):
     """
     This function trains the tabular data.
     """
@@ -244,7 +236,7 @@ def train_tabular(model: str):
         patients_train,
         samples_train,
         centers_train,
-    ) = load_mocov_train_data(tile_averaging=False)
+    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False)
     lrs = train_mocov_features(
         estimator,
         X_train,
@@ -255,7 +247,7 @@ def train_tabular(model: str):
         samples_train,
         centers_train,
         tile_avg=False,
-        subsampling=True,
+        subsampling=False,
     )
-    preds = predict_cv_classifiers(lrs, tile_avg=False)
+    preds = predict_cv_classifiers(lrs, tile_avg=True, data_path=data_path)
     return preds
