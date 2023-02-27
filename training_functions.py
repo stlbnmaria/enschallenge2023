@@ -8,11 +8,6 @@ from sklearn.metrics import roc_auc_score
 from modeling.tabular_models import get_tabular_estimator
 
 
-# TODO: aggregate classifier differently? - e.g. instead of average use second layer model
-# TODO: incorporate the different centers to take into account heterogenity
-# TODO: try different ML models and tune them
-
-
 def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = True):
     """
     This function loads the MoCov features full file for training and
@@ -71,6 +66,22 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = T
     )
 
 
+def pred_aggregation(values: np.array, agg_over: np.array, agg_by: str = "mean") -> np.array:
+    """
+    This function aggregates predicted or true values by some aggregation form (e.g. mean)
+    and over some common feature, e.g. samples id or patient id.
+    """
+    agg_unique = np.unique(agg_over)
+
+    if agg_by == "mean": 
+        preds = [np.mean(values[agg_over == sample]) for sample in agg_unique]
+    elif agg_by == "max": 
+        preds = [np.max(values[agg_over == sample]) for sample in agg_unique]
+    elif agg_by == "min": 
+        preds = [np.min(values[agg_over == sample]) for sample in agg_unique]
+    return np.array(preds)
+
+
 def train_mocov_features(
     model,
     X_train,
@@ -119,24 +130,12 @@ def train_mocov_features(
 
             if not tile_avg:
                 samples_fold = samples_train[train_idx_]
-                preds_train = [
-                    np.mean(preds_train[samples_fold == sample])
-                    for sample in np.unique(samples_fold)
-                ]
-                y_fold_train = [
-                    np.mean(y_fold_train[samples_fold == sample])
-                    for sample in np.unique(samples_fold)
-                ]
+                preds_train = pred_aggregation(preds_train, samples_fold)
+                y_fold_train = pred_aggregation(y_fold_train, samples_fold)
 
                 samples_val = samples_train[val_idx_]
-                preds_val = [
-                    np.mean(preds_val[samples_val == sample])
-                    for sample in np.unique(samples_val)
-                ]
-                y_fold_val = [
-                    np.mean(y_fold_val[samples_val == sample])
-                    for sample in np.unique(samples_val)
-                ]
+                preds_val = pred_aggregation(preds_val, samples_val)
+                y_fold_val = pred_aggregation(y_fold_val, samples_val)
 
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
@@ -201,7 +200,6 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True):
     prediction to create the final prediction.
     """
     X_test, _, _, samples_test = load_mocov_test_data(tile_averaging=tile_avg)
-    samples_unique = np.unique(samples_test)
 
     preds_test = 0
     # loop over the classifiers
@@ -210,9 +208,7 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True):
             preds_test += lr.predict_proba(X_test)[:, 1]
         else:
             temp = lr.predict_proba(X_test)[:, 1]
-            temp = np.array(
-                [np.mean(temp[samples_test == sample]) for sample in samples_unique]
-            )
+            temp = pred_aggregation(temp, samples_test)
             assert temp.shape[0] == (149)
             preds_test += temp
 
