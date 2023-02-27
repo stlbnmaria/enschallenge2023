@@ -93,6 +93,7 @@ def train_mocov_features(
     centers_train,
     tile_avg: bool = True,
     rep_cv: int = 1,
+    subsampling: bool = False,
 ):
     """
     This function trains any model of 5-fold cv on the mocov features
@@ -119,6 +120,19 @@ def train_mocov_features(
             y_fold_train = y_train[train_idx_]
             X_fold_val = X_train[val_idx_]
             y_fold_val = y_train[val_idx_]
+            samples_fold = samples_train[train_idx_]
+            val_center = np.unique(centers_train[val_idx_])
+
+            if not tile_avg and subsampling:
+                print(X_fold_train.shape)
+                df = pd.DataFrame({"id": samples_fold})
+                df.reset_index(inplace=True, drop=True)
+                sub_index = df.groupby("id").sample(frac=0.5, random_state=0).index
+                X_fold_train = X_fold_train[sub_index]
+                y_fold_train = y_train[sub_index]
+                samples_fold = samples_fold[sub_index]
+                print(X_fold_train.shape)
+
             # instantiate the model
             lr = model
             # fit it
@@ -129,7 +143,6 @@ def train_mocov_features(
             preds_val = lr.predict_proba(X_fold_val)[:, 1]
 
             if not tile_avg:
-                samples_fold = samples_train[train_idx_]
                 preds_train = pred_aggregation(preds_train, samples_fold)
                 y_fold_train = pred_aggregation(y_fold_train, samples_fold)
 
@@ -140,7 +153,7 @@ def train_mocov_features(
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
             test_auc = roc_auc_score(y_fold_val, preds_val)
-            print(f"AUC on split {k} fold {fold}: Train - {train_auc:.3f}, Val - {test_auc:.3f}")
+            print(f"AUC on split {k} validation center {val_center}: Train - {train_auc:.3f}, Val - {test_auc:.3f}")
             aucs.append(test_auc)
             # add the logistic regression to the list of classifiers
             lrs.append(lr)
@@ -242,6 +255,7 @@ def train_tabular(model: str):
         samples_train,
         centers_train,
         tile_avg=False,
+        subsampling=True,
     )
     preds = predict_cv_classifiers(lrs, tile_avg=False)
     return preds
