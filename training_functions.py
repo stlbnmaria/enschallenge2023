@@ -249,5 +249,5 @@ def train_tabular(model: str, data_path=Path("./storage/")):
         tile_avg=False,
         subsampling=False,
     )
-    preds = predict_cv_classifiers(lrs, tile_avg=True, data_path=data_path)
+    preds = predict_cv_classifiers(lrs, tile_avg=False, data_path=data_path)
     return preds
