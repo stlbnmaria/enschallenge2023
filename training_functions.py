@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import math
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, GroupKFold
@@ -81,6 +82,14 @@ def pred_aggregation(values: np.array, agg_over: np.array, agg_by: str = "mean")
         preds = [np.max(values[agg_over == sample]) for sample in agg_unique]
     elif agg_by == "min": 
         preds = [np.min(values[agg_over == sample]) for sample in agg_unique]
+    elif agg_by.startswith("mean_"):
+        bound = int(agg_by.split("_")[1])/100
+        preds = np.empty(0)
+        for sample in agg_unique:
+            temp = values[agg_over == sample]
+            idx = (-temp).argsort()[:math.ceil(len(temp) * bound)]
+            preds = np.append(preds, np.mean(temp[idx]))
+        return preds
     return np.array(preds)
 
 
@@ -93,6 +102,7 @@ def train_mocov_features(
     patients_train,
     samples_train,
     centers_train,
+    agg_by: str,
     tile_avg: bool = True,
     rep_cv: int = 1,
     subsampling: bool = False,
@@ -135,12 +145,12 @@ def train_mocov_features(
             preds_val = lr.predict_proba(X_fold_val)[:, 1]
 
             if not tile_avg:
-                preds_train = pred_aggregation(preds_train, samples_fold)
-                y_fold_train = pred_aggregation(y_fold_train, samples_fold)
+                preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
+                y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
 
                 samples_val = samples_train[val_idx_]
-                preds_val = pred_aggregation(preds_val, samples_val)
-                y_fold_val = pred_aggregation(y_fold_val, samples_val)
+                preds_val = pred_aggregation(preds_val, samples_val, agg_by)
+                y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
 
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
@@ -198,7 +208,7 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Tr
     return X_test, patients_unique, patients_test, samples_test
 
 
-def predict_cv_classifiers(lrs: list, tile_avg: bool = True, data_path=Path("./storage/")):
+def predict_cv_classifiers(lrs: list, agg_by: str, tile_avg: bool = True, data_path=Path("./storage/")):
     """
     This function takes a list of classifiers trained on crossvalidation,
     predicts the target for every cv-classifier and averages over this
@@ -213,7 +223,7 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True, data_path=Path("./s
             preds_test += lr.predict_proba(X_test)[:, 1]
         else:
             temp = lr.predict_proba(X_test)[:, 1]
-            temp = pred_aggregation(temp, samples_test)
+            temp = pred_aggregation(temp, samples_test, agg_by)
             assert temp.shape[0] == (149)
             preds_test += temp
 
@@ -222,7 +232,7 @@ def predict_cv_classifiers(lrs: list, tile_avg: bool = True, data_path=Path("./s
     return preds_test
 
 
-def train_tabular(model: str, data_path=Path("./storage/")):
+def train_tabular(model: str, agg_by: str, data_path=Path("./storage/")):
     """
     This function trains the tabular data.
     """
@@ -246,8 +256,9 @@ def train_tabular(model: str, data_path=Path("./storage/")):
         patients_train,
         samples_train,
         centers_train,
+        agg_by,
         tile_avg=False,
         subsampling=False,
     )
-    preds = predict_cv_classifiers(lrs, tile_avg=False, data_path=data_path)
+    preds = predict_cv_classifiers(lrs, agg_by, tile_avg=False, data_path=data_path)
     return preds
