@@ -102,7 +102,7 @@ def train_mocov_features(
     patients_train,
     samples_train,
     centers_train,
-    agg_by: str,
+    agg_by: str = "mean",
     tile_avg: bool = True,
     rep_cv: int = 1,
     subsampling: bool = False,
