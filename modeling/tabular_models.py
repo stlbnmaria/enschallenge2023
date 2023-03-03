@@ -10,9 +10,9 @@ from xgboost import XGBClassifier
 def get_tabular_estimator(model: str):
     # define dict of potential estimators
     estimators = {
-        "LogReg": LogisticRegression(class_weight={0:.35, 1:.65}),
+        "LogReg": LogisticRegression(),
         "DT": DecisionTreeClassifier(),
-        "RF": RandomForestClassifier(max_features=1, n_jobs=6, class_weight={0:.1, 1:.9}),
+        "RF": RandomForestClassifier(n_jobs=6),
         "ExtraTrees": ExtraTreesClassifier(n_jobs=6),
         "XGB": XGBClassifier(),
         "Catboost": CatBoostClassifier(verbose=0), 
