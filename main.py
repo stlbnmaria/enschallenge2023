@@ -36,9 +36,21 @@ if __name__ == "__main__":
     input_args = vars(args)
 
     if input_args["goal"] == "test":
-        preds = train_tabular(input_args["model"], input_args["aggregation"])
+        preds = train_tabular(
+            model=input_args["model"],
+            agg_by=input_args["aggregation"],
+            n_jobs=input_args["parallel"],
+        )
     elif input_args["goal"] == "submission":
-        preds = train_tabular(input_args["model"], input_args["aggregation"])
+        preds = train_tabular(
+            model=input_args["model"],
+            agg_by=input_args["aggregation"],
+            n_jobs=input_args["parallel"],
+        )
         store_submission(preds, input_args["subname"])
     elif input_args["goal"] == "tuning":
-        tuning_moco(model=input_args["model"], agg_by=input_args["aggregation"])
+        tuning_moco(
+            model=input_args["model"],
+            agg_by=input_args["aggregation"],
+            n_jobs=input_args["parallel"],
+        )

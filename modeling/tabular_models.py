@@ -28,16 +28,16 @@ def read_grid_tuning(path: str = "./modeling/"):
     return grid
 
 
-def get_tabular_estimator(model: str):
+def get_tabular_estimator(model: str, n_jobs: int = 6):
     # define dict of potential estimators
     estimators = {
-        "LogReg": LogisticRegression(solver="newton-cholesky"),
+        "LogReg": LogisticRegression(),
         "DT": DecisionTreeClassifier(),
-        "RF": RandomForestClassifier(n_jobs=6, n_estimators=300),
-        "ExtraTrees": ExtraTreesClassifier(n_jobs=6),
-        "XGB": XGBClassifier(),
+        "RF": RandomForestClassifier(n_jobs=n_jobs),
+        "ExtraTrees": ExtraTreesClassifier(n_jobs=n_jobs),
+        "XGB": XGBClassifier(n_jobs=n_jobs),
         "Catboost": CatBoostClassifier(verbose=0), 
-        "LightGBM": LGBMClassifier(),  
+        "LightGBM": LGBMClassifier(n_jobs=n_jobs),  
         "MLP": MLPClassifier(),
     }
 
