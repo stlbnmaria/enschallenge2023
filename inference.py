@@ -4,7 +4,9 @@ import time
 import numpy as np
 import pandas as pd
 
-from utils import load_mocov_test_data, pred_aggregation
+from utils import load_mocov_test_data, pred_aggregation, load_mocov_train_data
+from modeling.tabular_models import read_grid_tuning, get_tabular_estimator
+
 
 def predict_cv_classifiers(
     lrs: list, agg_by: str, tile_avg: bool = True, data_path=Path("./storage/")
@@ -31,6 +33,47 @@ def predict_cv_classifiers(
 
     # and take the average (ensembling technique)
     preds_test = preds_test / len(lrs)
+    return preds_test
+
+
+def train_for_submission(
+    model: str,
+    agg_by: str,
+    n_jobs: int = 6,
+    tile_avg: bool = True,
+    data_path=Path("./storage/"),
+):
+    """
+    This function trains an estimator on the whole train data and
+    predicts the probability for the test data set.
+    """
+    grid = read_grid_tuning()
+    estimator = get_tabular_estimator(model, n_jobs)
+    if grid is not None:
+        estimator.set_params(**grid)
+
+    (
+        X_train,
+        y_train,
+        patients_unique,
+        y_unique,
+        patients_train,
+        samples_train,
+        centers_train,
+    ) = load_mocov_train_data(tile_averaging=tile_avg)
+
+    estimator.fit(X_train, y_train)
+
+    X_test, _, _, samples_test = load_mocov_test_data(
+        data_path=data_path, tile_averaging=tile_avg
+    )
+
+    if tile_avg:
+        preds_test += estimator.predict_proba(X_test)[:, 1]
+    else:
+        temp = estimator.predict_proba(X_test)[:, 1]
+        preds_test = pred_aggregation(temp, samples_test, agg_by)["Target"]
+
     return preds_test
 
 
@@ -67,6 +110,4 @@ def store_submission(
     # save the submission as a csv file
     t = time.localtime()
     timestamp = time.strftime("%Y-%m-%d-%H%M", t)
-    submission.to_csv(
-        submission_path / f"{timestamp}_{sub_name}.csv", index=None
-    )
+    submission.to_csv(submission_path / f"{timestamp}_{sub_name}.csv", index=None)
