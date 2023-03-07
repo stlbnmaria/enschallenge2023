@@ -11,6 +11,7 @@ from sklearn.exceptions import ConvergenceWarning
 from sklearn.metrics import roc_auc_score
 
 from modeling.tabular_models import get_tabular_estimator, read_grid_tuning
+from utils import pred_aggregation
 
 
 def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = True):
@@ -69,34 +70,6 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = T
         samples_train,
         centers_train,
     )
-
-
-def pred_aggregation(
-    values: np.array, agg_over: np.array, agg_by: str = "mean"
-) -> np.array:
-    """
-    This function aggregates predicted or true values by some aggregation form (e.g. mean)
-    and over some common feature, e.g. samples id or patient id.
-    """
-    agg_unique = np.unique(agg_over)
-
-    if agg_by == "mean":
-        preds = [np.mean(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by == "median":
-        preds = [np.median(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by == "max":
-        preds = [np.max(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by == "min":
-        preds = [np.min(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by.startswith("mean_"):
-        bound = int(agg_by.split("_")[1]) / 100
-        preds = np.empty(0)
-        for sample in agg_unique:
-            temp = values[agg_over == sample]
-            idx = (-temp).argsort()[: math.ceil(len(temp) * bound)]
-            preds = np.append(preds, np.mean(temp[idx]))
-        return preds
-    return np.array(preds)
 
 
 def train_mocov_features(
@@ -222,6 +195,7 @@ def tuning_moco(
             X_fold_val = X_train[val_idx_]
             y_fold_val = y_train[val_idx_]
             samples_fold = samples_train[train_idx_]
+            samples_val = samples_train[val_idx_]
             val_center = np.unique(centers_train[val_idx_])[0].replace("_", "")
 
             # fit the model
@@ -233,7 +207,6 @@ def tuning_moco(
             y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
 
             preds_val = estimator.predict_proba(X_fold_val)[:, 1]
-            samples_val = samples_train[val_idx_]
             preds_val = pred_aggregation(preds_val, samples_val, agg_by)
             y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
 

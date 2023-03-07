@@ -1,8 +1,40 @@
 from pathlib import Path
 import time
 
+import math
 import numpy as np
 import pandas as pd
+
+
+def pred_aggregation(
+    values: np.array, agg_over: np.array, agg_by: str = "mean"
+) -> pd.DataFrame:
+    """
+    This function aggregates predicted or true values by some aggregation form (e.g. mean)
+    and over some common feature, e.g. samples id or patient id.
+    """
+    agg_unique = np.unique(agg_over)
+
+    if agg_by == "mean":
+        preds = {sample: [np.mean(values[agg_over == sample])] for sample in agg_unique}
+    elif agg_by == "median":
+        preds = {sample: [np.median(values[agg_over == sample])] for sample in agg_unique}
+    elif agg_by == "max":
+        preds = {sample: [np.max(values[agg_over == sample])] for sample in agg_unique}
+    elif agg_by == "min":
+        preds = {sample: [np.min(values[agg_over == sample])] for sample in agg_unique}
+    elif agg_by.startswith("mean_"):
+        bound = int(agg_by.split("_")[1]) / 100
+        preds = {}
+        for sample in agg_unique:
+            temp = values[agg_over == sample]
+            idx = (-temp).argsort()[: math.ceil(len(temp) * bound)]
+            preds[sample] = [np.mean(temp[idx])]
+
+    df = pd.DataFrame(preds)
+    df = df.transpose().reset_index()
+    df.columns = ["Sample ID", "Target"]
+    return df
 
 
 def store_submission(
