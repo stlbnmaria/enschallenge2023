@@ -1,7 +1,7 @@
 import argparse
 
 from utils import store_submission
-from training_functions import train_tabular, tuning_moco
+from training_functions import train_tabular, tuning_moco, predict_cv_classifiers
 
 ###############################################################################
 
@@ -36,17 +36,18 @@ if __name__ == "__main__":
     input_args = vars(args)
 
     if input_args["goal"] == "test":
-        preds = train_tabular(
+        train_tabular(
             model=input_args["model"],
             agg_by=input_args["aggregation"],
             n_jobs=input_args["parallel"],
         )
     elif input_args["goal"] == "submission":
-        preds = train_tabular(
+        lrs = train_tabular(
             model=input_args["model"],
             agg_by=input_args["aggregation"],
             n_jobs=input_args["parallel"],
         )
+        preds = predict_cv_classifiers(lrs, agg_by=input_args["aggregation"], tile_avg=False)
         store_submission(preds, input_args["subname"])
     elif input_args["goal"] == "tuning":
         tuning_moco(
