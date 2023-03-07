@@ -1,7 +1,7 @@
 import argparse
 
-from utils import store_submission
-from training_functions import train_tabular, tuning_moco, predict_cv_classifiers
+from inference import store_submission, predict_cv_classifiers
+from training_functions import train_tabular, tuning_moco
 
 ###############################################################################
 
