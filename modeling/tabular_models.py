@@ -14,9 +14,9 @@ from xgboost import XGBClassifier
 def read_grid_tuning(path: str = "./modeling/"):
     """
     This function loads the modeling inputs from a predefined excel input,
-    inlc. the feature engineering selection inputs and
-    hyperparameter grid.
+    e.g. the hyperparameter grid.
     """
+    # read modeling input excel
     modeling_inputs = pd.read_excel(os.path.join(path, "modeling_inputs.xlsx"))
     # extract hyperparameter grid
     grid = modeling_inputs["grid"][0]
