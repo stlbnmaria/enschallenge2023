@@ -194,7 +194,10 @@ def train_tabular(
     """
     This function trains the tabular data.
     """
+    grid = read_grid_tuning()
     estimator = get_tabular_estimator(model, n_jobs)
+    if grid is not None:
+        estimator.set_params(**grid)
 
     (
         X_train,
