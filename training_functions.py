@@ -1,12 +1,16 @@
+import os
+from datetime import datetime
 from pathlib import Path
 
 import math
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold, GroupKFold
+from sklearn.model_selection import StratifiedKFold, GroupKFold, ParameterGrid
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.metrics import roc_auc_score
 
-from modeling.tabular_models import get_tabular_estimator
+from modeling.tabular_models import get_tabular_estimator, read_grid_tuning
 
 
 def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = True):
@@ -67,27 +71,29 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = T
     )
 
 
-def pred_aggregation(values: np.array, agg_over: np.array, agg_by: str = "mean") -> np.array:
+def pred_aggregation(
+    values: np.array, agg_over: np.array, agg_by: str = "mean"
+) -> np.array:
     """
     This function aggregates predicted or true values by some aggregation form (e.g. mean)
     and over some common feature, e.g. samples id or patient id.
     """
     agg_unique = np.unique(agg_over)
 
-    if agg_by == "mean": 
+    if agg_by == "mean":
         preds = [np.mean(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by == "median": 
+    elif agg_by == "median":
         preds = [np.median(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by == "max": 
+    elif agg_by == "max":
         preds = [np.max(values[agg_over == sample]) for sample in agg_unique]
-    elif agg_by == "min": 
+    elif agg_by == "min":
         preds = [np.min(values[agg_over == sample]) for sample in agg_unique]
     elif agg_by.startswith("mean_"):
-        bound = int(agg_by.split("_")[1])/100
+        bound = int(agg_by.split("_")[1]) / 100
         preds = np.empty(0)
         for sample in agg_unique:
             temp = values[agg_over == sample]
-            idx = (-temp).argsort()[:math.ceil(len(temp) * bound)]
+            idx = (-temp).argsort()[: math.ceil(len(temp) * bound)]
             preds = np.append(preds, np.mean(temp[idx]))
         return preds
     return np.array(preds)
@@ -117,7 +123,7 @@ def train_mocov_features(
     for k in range(rep_cv):
         kfold = GroupKFold(n_splits=3)
         fold = 0
-        # split is performed at the patient-level
+        # split is performed at the center level
         for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
             # set the training and validation folds
             X_fold_train = X_train[train_idx_]
@@ -155,7 +161,9 @@ def train_mocov_features(
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
             test_auc = roc_auc_score(y_fold_val, preds_val)
-            print(f"AUC on split {k} validation center {val_center}: Train - {train_auc:.3f}, Val - {test_auc:.3f}")
+            print(
+                f"AUC on split {k} validation center {val_center}: Train - {train_auc:.3f}, Val - {test_auc:.3f}"
+            )
             aucs.append(test_auc)
             # add the logistic regression to the list of classifiers
             lrs.append(lr)
@@ -166,6 +174,91 @@ def train_mocov_features(
         f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
     )
     return lrs
+
+
+@ignore_warnings(category=ConvergenceWarning)
+def tuning_moco(
+    model: str, agg_by: str = "mean", n_jobs: int = 6, data_path=Path("./storage/")
+):
+    """
+    This function performs grid tuning for an estimator and saves the results in a subfolder of modeling.
+    """
+    # define the input varibales
+    (
+        X_train,
+        y_train,
+        patients_unique,
+        y_unique,
+        patients_train,
+        samples_train,
+        centers_train,
+    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False)
+    grid = ParameterGrid(read_grid_tuning())
+    out_path = os.path.join("./modeling", model)
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    timestamp = datetime.today().strftime("%Y%m%d_%H%M")
+    cv_results = {
+        "grid": [],
+        "train_AUC_C2_C5": [],
+        "train_AUC_C1_C2": [],
+        "train_AUC_C1_C5": [],
+        "val_AUC_C1": [],
+        "val_AUC_C5": [],
+        "val_AUC_C2": [],
+    }
+
+    print(f"Started tuning for {model} with grid of size: {len(grid)}")
+    for hyp in grid:
+        estimator = get_tabular_estimator(model, n_jobs)
+        estimator.set_params(**hyp)
+        cv_results["grid"].append(hyp)
+        kfold = GroupKFold(n_splits=3)
+        # split is performed at the center level
+        for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
+            # set the training and validation folds
+            X_fold_train = X_train[train_idx_]
+            y_fold_train = y_train[train_idx_]
+            X_fold_val = X_train[val_idx_]
+            y_fold_val = y_train[val_idx_]
+            samples_fold = samples_train[train_idx_]
+            val_center = np.unique(centers_train[val_idx_])[0].replace("_", "")
+
+            # fit the model
+            estimator.fit(X_fold_train, y_fold_train)
+
+            # get the predictions (1-d probability)
+            preds_train = estimator.predict_proba(X_fold_train)[:, 1]
+            preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
+            y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
+
+            preds_val = estimator.predict_proba(X_fold_val)[:, 1]
+            samples_val = samples_train[val_idx_]
+            preds_val = pred_aggregation(preds_val, samples_val, agg_by)
+            y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
+
+            # compute the AUC score using scikit-learn
+            train_auc = roc_auc_score(y_fold_train, preds_train)
+            test_auc = roc_auc_score(y_fold_val, preds_val)
+
+            train_centers = {"C1": "C2_C5", "C2": "C1_C5", "C5": "C1_C2"}
+            cv_results["train_AUC_" + train_centers[val_center]].append(train_auc)
+            cv_results["val_AUC_" + val_center].append(test_auc)
+        print(f"Done with tuning iteration {list(grid).index(hyp) + 1} / {len(grid)}")
+
+    # saving cv_results
+    results = pd.DataFrame(cv_results)
+    results["train_AUC_mean"] = results[
+        ["train_AUC_C2_C5", "train_AUC_C1_C2", "train_AUC_C1_C5"]
+    ].mean(axis=1)
+    results["val_AUC_mean"] = results[["val_AUC_C1", "val_AUC_C2", "val_AUC_C5"]].mean(
+        axis=1
+    )
+    results.to_csv(os.path.join(out_path, f"{timestamp}_cv_results.csv"), index=False)
+    print(f"----------- GridSearchCV results saved successfully-----------")
+
+    best_val_score = max(results["val_AUC_mean"])
+    print(f"----------- Best avg. validation AUC: {best_val_score:.3f} -----------")
 
 
 def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = True):
@@ -208,13 +301,17 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Tr
     return X_test, patients_unique, patients_test, samples_test
 
 
-def predict_cv_classifiers(lrs: list, agg_by: str, tile_avg: bool = True, data_path=Path("./storage/")):
+def predict_cv_classifiers(
+    lrs: list, agg_by: str, tile_avg: bool = True, data_path=Path("./storage/")
+):
     """
     This function takes a list of classifiers trained on crossvalidation,
     predicts the target for every cv-classifier and averages over this
     prediction to create the final prediction.
     """
-    X_test, _, _, samples_test = load_mocov_test_data(data_path=data_path, tile_averaging=tile_avg)
+    X_test, _, _, samples_test = load_mocov_test_data(
+        data_path=data_path, tile_averaging=tile_avg
+    )
 
     preds_test = 0
     # loop over the classifiers
@@ -232,11 +329,13 @@ def predict_cv_classifiers(lrs: list, agg_by: str, tile_avg: bool = True, data_p
     return preds_test
 
 
-def train_tabular(model: str, agg_by: str, data_path=Path("./storage/")):
+def train_tabular(
+    model: str, agg_by: str, n_jobs: int = 6, data_path=Path("./storage/")
+):
     """
     This function trains the tabular data.
     """
-    estimator = get_tabular_estimator(model)
+    estimator = get_tabular_estimator(model, n_jobs)
 
     (
         X_train,
