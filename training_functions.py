@@ -126,10 +126,16 @@ def train_mocov_features(
             if not tile_avg:
                 preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
                 y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
+                train_y = pd.merge(y_fold_train, preds_train, on='Sample ID')
+                preds_train = train_y["Target_y"]
+                y_fold_train = train_y["Target_x"]
 
                 samples_val = samples_train[val_idx_]
                 preds_val = pred_aggregation(preds_val, samples_val, agg_by)
                 y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
+                val_y = pd.merge(y_fold_val, preds_val, on='Sample ID')
+                preds_val = val_y["Target_y"]
+                y_fold_val = val_y["Target_x"]
 
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
@@ -205,10 +211,16 @@ def tuning_moco(
             preds_train = estimator.predict_proba(X_fold_train)[:, 1]
             preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
             y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
+            train_y = pd.merge(y_fold_train, preds_train, on='Sample ID')
+            preds_train = train_y["Target_y"]
+            y_fold_train = train_y["Target_x"]
 
             preds_val = estimator.predict_proba(X_fold_val)[:, 1]
             preds_val = pred_aggregation(preds_val, samples_val, agg_by)
             y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
+            val_y = pd.merge(y_fold_val, preds_val, on='Sample ID')
+            preds_val = val_y["Target_y"]
+            y_fold_val = val_y["Target_x"]
 
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
@@ -293,7 +305,7 @@ def predict_cv_classifiers(
             preds_test += lr.predict_proba(X_test)[:, 1]
         else:
             temp = lr.predict_proba(X_test)[:, 1]
-            temp = pred_aggregation(temp, samples_test, agg_by)
+            temp = pred_aggregation(temp, samples_test, agg_by)["Target"]
             assert temp.shape[0] == (149)
             preds_test += temp
 
@@ -332,5 +344,4 @@ def train_tabular(
         tile_avg=False,
         subsampling=False,
     )
-    preds = predict_cv_classifiers(lrs, agg_by, tile_avg=False, data_path=data_path)
-    return preds
+    return lrs
