@@ -3,6 +3,7 @@ import os
 from ast import literal_eval
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
+from lineartree import LinearTreeClassifier, LinearForestClassifier, LinearBoostClassifier
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
@@ -38,6 +39,9 @@ def get_tabular_estimator(model: str, n_jobs: int = 6):
         "XGB": XGBClassifier(n_jobs=n_jobs),
         "Catboost": CatBoostClassifier(verbose=0), 
         "LightGBM": LGBMClassifier(n_jobs=n_jobs),  
+        "LinearTree": LinearTreeClassifier(base_estimator=LogisticRegression(), n_jobs=n_jobs),
+        "LinearForest": LinearForestClassifier(base_estimator=LogisticRegression()),
+        "LinearBoost": LinearBoostClassifier(base_estimator=LogisticRegression()),
         "MLP": MLPClassifier(),
     }
 
