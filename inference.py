@@ -16,7 +16,7 @@ def predict_cv_classifiers(
     predicts the target for every cv-classifier and averages over this
     prediction to create the final prediction.
     """
-    X_test, _, _, samples_test = load_mocov_test_data(
+    X_test, _, _, samples_test, _ = load_mocov_test_data(
         data_path=data_path, tile_averaging=tile_avg
     )
 
@@ -64,7 +64,7 @@ def train_for_submission(
 
     estimator.fit(X_train, y_train)
 
-    X_test, _, _, samples_test = load_mocov_test_data(
+    X_test, _, _, samples_test, _ = load_mocov_test_data(
         data_path=data_path, tile_averaging=tile_avg
     )
 

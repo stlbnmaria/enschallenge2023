@@ -100,7 +100,7 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Tr
 
     patients_unique = np.unique(patients_test)
 
-    return X_test, patients_unique, patients_test, samples_test
+    return X_test, patients_unique, patients_test, samples_test, centers_test
 
 
 def pred_aggregation(
