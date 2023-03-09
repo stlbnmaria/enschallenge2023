@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = True):
+def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = False):
     """
     This function loads the MoCov features full file for training and
     performs averaging over the tiles per sample as default.
@@ -63,7 +63,7 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = T
     )
 
 
-def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = True):
+def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = False):
     """
     This function loads the MoCov features full file for testing and
     performs averaging over the tiles per sample as default.

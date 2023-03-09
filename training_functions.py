@@ -25,7 +25,7 @@ def train_mocov_features(
     samples_train,
     centers_train,
     agg_by: str = "mean",
-    tile_avg: bool = True,
+    tile_avg: bool = False,
     rep_cv: int = 1,
     subsampling: bool = False,
 ):
@@ -190,7 +190,7 @@ def tuning_moco(
 
 
 def train_tabular(
-    model: str, agg_by: str, n_jobs: int = 6, data_path=Path("./storage/")
+    model: str, agg_by: str, tile_avg: bool = False, n_jobs: int = 6, data_path=Path("./storage/")
 ):
     """
     This function trains the tabular data.
@@ -208,7 +208,7 @@ def train_tabular(
         patients_train,
         samples_train,
         centers_train,
-    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False)
+    ) = load_mocov_train_data(data_path=data_path, tile_averaging=tile_avg)
     lrs = train_mocov_features(
         estimator,
         X_train,
@@ -219,7 +219,7 @@ def train_tabular(
         samples_train,
         centers_train,
         agg_by,
-        tile_avg=False,
+        tile_avg=tile_avg,
         subsampling=False,
     )
     return lrs

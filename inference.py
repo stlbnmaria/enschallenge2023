@@ -9,7 +9,7 @@ from modeling.tabular_models import read_grid_tuning, get_tabular_estimator
 
 
 def predict_cv_classifiers(
-    lrs: list, agg_by: str, tile_avg: bool = True, data_path=Path("./storage/")
+    lrs: list, agg_by: str, tile_avg: bool = False, data_path=Path("./storage/")
 ):
     """
     This function takes a list of classifiers trained on crossvalidation,
@@ -40,7 +40,7 @@ def train_for_submission(
     model: str,
     agg_by: str,
     n_jobs: int = 6,
-    tile_avg: bool = True,
+    tile_avg: bool = False,
     data_path=Path("./storage/"),
 ):
     """

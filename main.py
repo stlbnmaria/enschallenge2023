@@ -22,6 +22,12 @@ parser.add_argument(
     help="Aggreagtion of predictions in test & training",
 )
 parser.add_argument(
+    "--tile_avg",
+    type=bool,
+    default=False,
+    help="Tile averaging means no weakly supervision",
+)
+parser.add_argument(
     "--parallel",
     type=int,
     default=6,
@@ -40,13 +46,14 @@ if __name__ == "__main__":
             model=input_args["model"],
             agg_by=input_args["aggregation"],
             n_jobs=input_args["parallel"],
+            tile_avg=input_args["tile_avg"],
         )
     elif input_args["goal"] == "submission":
         preds = train_for_submission(
             model=input_args["model"],
             n_jobs=input_args["parallel"],
             agg_by=input_args["aggregation"],
-            tile_avg=False,
+            tile_avg=input_args["tile_avg"],
         )
         store_submission(preds, input_args["subname"])
     elif input_args["goal"] == "tuning":
