@@ -3,3 +3,4 @@ __pycache__
 .ipynb_checkpoints
 storage
 modeling/modeling_inputs.xlsx
+catboost_info
