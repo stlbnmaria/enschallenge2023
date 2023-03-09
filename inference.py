@@ -69,7 +69,7 @@ def train_for_submission(
     )
 
     if tile_avg:
-        preds_test += estimator.predict_proba(X_test)[:, 1]
+        preds_test = estimator.predict_proba(X_test)[:, 1]
     else:
         temp = estimator.predict_proba(X_test)[:, 1]
         preds_test = pred_aggregation(temp, samples_test, agg_by)["Target"]
