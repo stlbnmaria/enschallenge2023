@@ -14,6 +14,7 @@ from modeling.tabular_models import get_tabular_estimator, read_grid_tuning
 from utils import pred_aggregation, load_mocov_train_data
 
 
+@ignore_warnings(category=ConvergenceWarning)
 def train_mocov_features(
     model,
     X_train,
