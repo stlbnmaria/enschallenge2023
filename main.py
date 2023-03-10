@@ -28,6 +28,12 @@ parser.add_argument(
     help="Tile averaging means no weakly supervision",
 )
 parser.add_argument(
+    "--scaling",
+    type=bool,
+    default=False,
+    help="Scaling MoCo features for each center",
+)
+parser.add_argument(
     "--parallel",
     type=int,
     default=6,
@@ -45,8 +51,9 @@ if __name__ == "__main__":
         train_tabular(
             model=input_args["model"],
             agg_by=input_args["aggregation"],
-            n_jobs=input_args["parallel"],
             tile_avg=input_args["tile_avg"],
+            scaling=input_args["scaling"],
+            n_jobs=input_args["parallel"],
         )
     elif input_args["goal"] == "submission":
         preds = train_for_submission(

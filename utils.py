@@ -3,9 +3,12 @@ from pathlib import Path
 import math
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 
-def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = False):
+def load_mocov_train_data(
+    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: bool = False
+):
     """
     This function loads the MoCov features full file for training and
     performs averaging over the tiles per sample as default.
@@ -18,9 +21,36 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = F
     samples_train = metadata[:, 2]
     centers_train = metadata[:, 3]
 
+    # set default X_train
+    X_train = feat.copy()
+
+    if scaling:
+        # scale the feature values for each center seperately
+        X_train = np.empty([0, 2048])
+        for center in np.unique(centers_train):
+            scaler = StandardScaler()
+            X_train = np.vstack(
+                [X_train, scaler.fit_transform(feat[centers_train == center])]
+            )
+
+        # conditions for the three centers to reorder the other arrays
+        c1 = centers_train == "C_1"
+        c2 = centers_train == "C_2"
+        c5 = centers_train == "C_5"
+
+        # reorder y, patients, samples and centers arrays
+        y_train = np.hstack([y_train[c1], y_train[c2], y_train[c5]])
+        patients_train = np.hstack(
+            [patients_train[c1], patients_train[c2], patients_train[c5]]
+        )
+        samples_train = np.hstack(
+            [samples_train[c1], samples_train[c2], samples_train[c5]]
+        )
+        centers_train = np.sort(centers_train)
+
     if tile_averaging:
         X_train = [
-            np.mean(feat[samples_train == sample], axis=0)
+            np.mean(X_train[samples_train == sample], axis=0)
             for sample in np.unique(samples_train)
         ]
         X_train = np.array(X_train)
@@ -44,19 +74,10 @@ def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool = F
         centers_train = np.array(centers_train)
 
         samples_train = np.unique(samples_train)
-    else:
-        X_train = feat
-
-    patients_unique = np.unique(patients_train)
-    y_unique = np.array(
-        [np.mean(y_train[patients_train == p]) for p in patients_unique]
-    )
 
     return (
         X_train,
         y_train,
-        patients_unique,
-        y_unique,
         patients_train,
         samples_train,
         centers_train,
@@ -98,9 +119,7 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Fa
     else:
         X_test = feat
 
-    patients_unique = np.unique(patients_test)
-
-    return X_test, patients_unique, patients_test, samples_test, centers_test
+    return X_test, patients_test, samples_test, centers_test
 
 
 def pred_aggregation(
@@ -115,7 +134,9 @@ def pred_aggregation(
     if agg_by == "mean":
         preds = {sample: [np.mean(values[agg_over == sample])] for sample in agg_unique}
     elif agg_by == "median":
-        preds = {sample: [np.median(values[agg_over == sample])] for sample in agg_unique}
+        preds = {
+            sample: [np.median(values[agg_over == sample])] for sample in agg_unique
+        }
     elif agg_by == "max":
         preds = {sample: [np.max(values[agg_over == sample])] for sample in agg_unique}
     elif agg_by == "min":

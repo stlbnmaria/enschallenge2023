@@ -19,8 +19,6 @@ def train_mocov_features(
     model,
     X_train,
     y_train,
-    patients_unique,
-    y_unique,
     patients_train,
     samples_train,
     centers_train,
@@ -69,14 +67,14 @@ def train_mocov_features(
             if not tile_avg:
                 preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
                 y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
-                train_y = pd.merge(y_fold_train, preds_train, on='Sample ID')
+                train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
                 preds_train = train_y["Target_y"]
                 y_fold_train = train_y["Target_x"]
 
                 samples_val = samples_train[val_idx_]
                 preds_val = pred_aggregation(preds_val, samples_val, agg_by)
                 y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
-                val_y = pd.merge(y_fold_val, preds_val, on='Sample ID')
+                val_y = pd.merge(y_fold_val, preds_val, on="Sample ID")
                 preds_val = val_y["Target_y"]
                 y_fold_val = val_y["Target_x"]
 
@@ -109,12 +107,10 @@ def tuning_moco(
     (
         X_train,
         y_train,
-        patients_unique,
-        y_unique,
         patients_train,
         samples_train,
         centers_train,
-    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False)
+    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False, scaling=False)
     grid = ParameterGrid(read_grid_tuning())
     out_path = os.path.join("./modeling", model)
     if not os.path.exists(out_path):
@@ -154,14 +150,14 @@ def tuning_moco(
             preds_train = estimator.predict_proba(X_fold_train)[:, 1]
             preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
             y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
-            train_y = pd.merge(y_fold_train, preds_train, on='Sample ID')
+            train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
             preds_train = train_y["Target_y"]
             y_fold_train = train_y["Target_x"]
 
             preds_val = estimator.predict_proba(X_fold_val)[:, 1]
             preds_val = pred_aggregation(preds_val, samples_val, agg_by)
             y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
-            val_y = pd.merge(y_fold_val, preds_val, on='Sample ID')
+            val_y = pd.merge(y_fold_val, preds_val, on="Sample ID")
             preds_val = val_y["Target_y"]
             y_fold_val = val_y["Target_x"]
 
@@ -190,7 +186,12 @@ def tuning_moco(
 
 
 def train_tabular(
-    model: str, agg_by: str, tile_avg: bool = False, n_jobs: int = 6, data_path=Path("./storage/")
+    model: str,
+    agg_by: str,
+    tile_avg: bool = False,
+    scaling: bool = False,
+    n_jobs: int = 6,
+    data_path=Path("./storage/"),
 ):
     """
     This function trains the tabular data.
@@ -203,18 +204,16 @@ def train_tabular(
     (
         X_train,
         y_train,
-        patients_unique,
-        y_unique,
         patients_train,
         samples_train,
         centers_train,
-    ) = load_mocov_train_data(data_path=data_path, tile_averaging=tile_avg)
+    ) = load_mocov_train_data(
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling
+    )
     lrs = train_mocov_features(
         estimator,
         X_train,
         y_train,
-        patients_unique,
-        y_unique,
         patients_train,
         samples_train,
         centers_train,
