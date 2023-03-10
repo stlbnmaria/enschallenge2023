@@ -71,7 +71,9 @@ def load_mocov_train_data(
     )
 
 
-def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = False):
+def load_mocov_test_data(
+    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: bool = False
+):
     """
     This function loads the MoCov features full file for testing and
     performs averaging over the tiles per sample as default.
@@ -85,6 +87,29 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Fa
 
     # set default X_test
     X_test = feat.copy()
+
+    if scaling:
+        # scale the feature values for each center seperately
+        X_test = np.empty([0, 2048])
+        for center in np.unique(centers_test):
+            scaler = StandardScaler()
+            X_test = np.vstack(
+                [X_test, scaler.fit_transform(feat[centers_test == center])]
+            )
+
+        # conditions for the three centers to reorder the other arrays
+        c1 = centers_test == "C_1"
+        c2 = centers_test == "C_2"
+        c5 = centers_test == "C_5"
+
+        # reorder patients, samples and centers arrays
+        patients_test = np.hstack(
+            [patients_test[c1], patients_test[c2], patients_test[c5]]
+        )
+        samples_test = np.hstack(
+            [samples_test[c1], samples_test[c2], samples_test[c5]]
+        )
+        centers_test = np.sort(centers_test)
 
     if tile_averaging:
         # aggregate the MoCo features by taking the mean for every sample

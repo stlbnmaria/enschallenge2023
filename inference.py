@@ -9,7 +9,7 @@ from modeling.tabular_models import read_grid_tuning, get_tabular_estimator
 
 
 def predict_cv_classifiers(
-    lrs: list, agg_by: str, tile_avg: bool = False, data_path=Path("./storage/")
+    lrs: list, agg_by: str, tile_avg: bool = False, scaling: bool = False, data_path=Path("./storage/")
 ):
     """
     This function takes a list of classifiers trained on crossvalidation,
@@ -17,7 +17,7 @@ def predict_cv_classifiers(
     prediction to create the final prediction.
     """
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling
     )
 
     preds_test = 0
@@ -41,6 +41,7 @@ def train_for_submission(
     agg_by: str,
     n_jobs: int = 6,
     tile_avg: bool = False,
+    scaling: bool = False,
     data_path=Path("./storage/"),
 ):
     """
@@ -58,12 +59,12 @@ def train_for_submission(
         patients_train,
         samples_train,
         centers_train,
-    ) = load_mocov_train_data(tile_averaging=tile_avg)
+    ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling)
 
     estimator.fit(X_train, y_train)
 
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling
     )
 
     if tile_avg:

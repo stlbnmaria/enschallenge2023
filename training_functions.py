@@ -98,7 +98,7 @@ def train_mocov_features(
 
 @ignore_warnings(category=ConvergenceWarning)
 def tuning_moco(
-    model: str, agg_by: str = "mean", n_jobs: int = 6, data_path=Path("./storage/")
+    model: str, agg_by: str = "mean", scaling: bool = False, n_jobs: int = 6, data_path=Path("./storage/")
 ):
     """
     This function performs grid tuning for an estimator and saves the results in a subfolder of modeling.
@@ -110,7 +110,7 @@ def tuning_moco(
         patients_train,
         samples_train,
         centers_train,
-    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False, scaling=False)
+    ) = load_mocov_train_data(data_path=data_path, tile_averaging=False, scaling=scaling)
     grid = ParameterGrid(read_grid_tuning())
     out_path = os.path.join("./modeling", model)
     if not os.path.exists(out_path):

@@ -60,6 +60,7 @@ if __name__ == "__main__":
             model=input_args["model"],
             n_jobs=input_args["parallel"],
             agg_by=input_args["aggregation"],
+            scaling=input_args["scaling"],
             tile_avg=input_args["tile_avg"],
         )
         store_submission(preds, input_args["subname"])
@@ -67,5 +68,6 @@ if __name__ == "__main__":
         tuning_moco(
             model=input_args["model"],
             agg_by=input_args["aggregation"],
+            scaling=input_args["scaling"],
             n_jobs=input_args["parallel"],
         )
