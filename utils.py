@@ -98,23 +98,22 @@ def load_mocov_test_data(
             )
 
         # conditions for the three centers to reorder the other arrays
-        c1 = centers_test == "C_1"
-        c2 = centers_test == "C_2"
-        c5 = centers_test == "C_5"
+        c3 = centers_test == "C_3"
+        c4 = centers_test == "C_4"
 
         # reorder patients, samples and centers arrays
         patients_test = np.hstack(
-            [patients_test[c1], patients_test[c2], patients_test[c5]]
+            [patients_test[c3], patients_test[c4]]
         )
         samples_test = np.hstack(
-            [samples_test[c1], samples_test[c2], samples_test[c5]]
+            [samples_test[c3], samples_test[c4]]
         )
         centers_test = np.sort(centers_test)
 
     if tile_averaging:
         # aggregate the MoCo features by taking the mean for every sample
         X_test = [
-            np.mean(feat[samples_test == sample], axis=0)
+            np.mean(X_test[samples_test == sample], axis=0)
             for sample in samples_test[::1000]
         ]
         X_test = np.array(X_test)
