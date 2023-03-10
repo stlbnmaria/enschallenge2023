@@ -49,31 +49,18 @@ def load_mocov_train_data(
         centers_train = np.sort(centers_train)
 
     if tile_averaging:
+        # aggregate the MoCo features by taking the mean for every sample
         X_train = [
             np.mean(X_train[samples_train == sample], axis=0)
-            for sample in np.unique(samples_train)
+            for sample in samples_train[::1000]
         ]
         X_train = np.array(X_train)
 
-        y_train = [
-            np.unique(y_train[samples_train == sample])
-            for sample in np.unique(samples_train)
-        ]
-        y_train = np.array(y_train).flatten()
-
-        patients_train = [
-            np.unique(patients_train[samples_train == sample])
-            for sample in np.unique(samples_train)
-        ]
-        patients_train = np.array(patients_train).flatten()
-
-        centers_train = [
-            np.unique(centers_train[samples_train == sample])
-            for sample in np.unique(samples_train)
-        ]
-        centers_train = np.array(centers_train)
-
-        samples_train = np.unique(samples_train)
+        # reduce the oversampled arrays
+        y_train = y_train[::1000]
+        patients_train = patients_train[::1000]
+        centers_train = centers_train[::1000]
+        samples_train = samples_train[::1000]
 
     return (
         X_train,
@@ -96,28 +83,21 @@ def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool = Fa
     samples_test = metadata[:, 1]
     centers_test = metadata[:, 2]
 
+    # set default X_test
+    X_test = feat.copy()
+
     if tile_averaging:
+        # aggregate the MoCo features by taking the mean for every sample
         X_test = [
             np.mean(feat[samples_test == sample], axis=0)
-            for sample in np.unique(samples_test)
+            for sample in samples_test[::1000]
         ]
         X_test = np.array(X_test)
 
-        patients_test = [
-            np.unique(patients_test[samples_test == sample])
-            for sample in np.unique(samples_test)
-        ]
-        patients_test = np.array(patients_test).flatten()
-
-        centers_test = [
-            np.unique(centers_test[samples_test == sample])
-            for sample in np.unique(samples_test)
-        ]
-        centers_test = np.array(centers_test)
-
-        samples_test = np.unique(samples_test)
-    else:
-        X_test = feat
+        # reduce the oversampled arrays
+        patients_test = patients_test[::1000]
+        centers_test = centers_test[::1000]
+        samples_test = samples_test[::1000]
 
     return X_test, patients_test, samples_test, centers_test
 
