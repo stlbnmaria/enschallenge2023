@@ -3,11 +3,11 @@ from pathlib import Path
 import math
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 def load_mocov_train_data(
-    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: bool = False
+    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None
 ):
     """
     This function loads the MoCov features full file for training and
@@ -24,11 +24,11 @@ def load_mocov_train_data(
     # set default X_train
     X_train = feat.copy()
 
-    if scaling:
+    if scaling is not None:
         # scale the feature values for each center seperately
         X_train = np.empty([0, 2048])
         for center in np.unique(centers_train):
-            scaler = StandardScaler()
+            scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_train = np.vstack(
                 [X_train, scaler.fit_transform(feat[centers_train == center])]
             )
@@ -72,7 +72,7 @@ def load_mocov_train_data(
 
 
 def load_mocov_test_data(
-    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: bool = False
+    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None
 ):
     """
     This function loads the MoCov features full file for testing and
@@ -88,11 +88,11 @@ def load_mocov_test_data(
     # set default X_test
     X_test = feat.copy()
 
-    if scaling:
+    if scaling is not None:
         # scale the feature values for each center seperately
         X_test = np.empty([0, 2048])
         for center in np.unique(centers_test):
-            scaler = StandardScaler()
+            scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_test = np.vstack(
                 [X_test, scaler.fit_transform(feat[centers_test == center])]
             )
@@ -102,12 +102,8 @@ def load_mocov_test_data(
         c4 = centers_test == "C_4"
 
         # reorder patients, samples and centers arrays
-        patients_test = np.hstack(
-            [patients_test[c3], patients_test[c4]]
-        )
-        samples_test = np.hstack(
-            [samples_test[c3], samples_test[c4]]
-        )
+        patients_test = np.hstack([patients_test[c3], patients_test[c4]])
+        samples_test = np.hstack([samples_test[c3], samples_test[c4]])
         centers_test = np.sort(centers_test)
 
     if tile_averaging:

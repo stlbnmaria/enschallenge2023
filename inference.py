@@ -13,19 +13,19 @@ def train_for_submission(
     agg_by: str,
     n_jobs: int = 6,
     tile_avg: bool = False,
-    scaling: bool = False,
+    scaling: str = None,
     data_path=Path("./storage/"),
 ):
     """
     This function trains an estimator on the whole train data and
     predicts the probability for the test data set.
     """
-    # load estimator and grid
+    # load estimator and grid
     grid = read_grid_tuning()
     estimator = get_tabular_estimator(model, n_jobs)
     if grid is not None:
         estimator.set_params(**grid)
-    
+
     # fit the model on the train data
     (
         X_train,
@@ -36,7 +36,7 @@ def train_for_submission(
     ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling)
     estimator.fit(X_train, y_train)
 
-    # load test data
+    # load test data
     X_test, _, samples_test, _ = load_mocov_test_data(
         data_path=data_path, tile_averaging=tile_avg, scaling=scaling
     )
@@ -62,9 +62,7 @@ def store_submission(
     predictions from an ML model to save a csv that can be directly uploaded
     to the submission platform.
     """
-    submission = preds.sort_values(
-        "Sample ID"
-    )  # extra step to sort the sample IDs
+    submission = preds.sort_values("Sample ID")  # extra step to sort the sample IDs
 
     # sanity checks
     assert all(submission["Target"].between(0, 1)), "`Target` values must be in [0, 1]"

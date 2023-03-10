@@ -29,9 +29,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--scaling",
-    type=bool,
-    default=False,
-    help="Scaling MoCo features for each center",
+    type=str,
+    default=None,
+    help="Scaling MoCo features for each center (MinMax/Standard/None)",
 )
 parser.add_argument(
     "--parallel",
@@ -63,10 +63,7 @@ if __name__ == "__main__":
             scaling=input_args["scaling"],
             n_jobs=input_args["parallel"],
         )
-        store_submission(
-            preds=preds, 
-            sub_name=input_args["subname"]
-        )
+        store_submission(preds=preds, sub_name=input_args["subname"])
     elif input_args["goal"] == "tuning":
         tuning_moco(
             model=input_args["model"],
