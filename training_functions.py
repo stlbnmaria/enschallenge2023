@@ -103,6 +103,7 @@ def tuning_moco(
     scaling: str = None,
     n_jobs: int = 6,
     data_path=Path("./storage/"),
+    file_name: str = "cv_results",
 ):
     """
     This function performs grid tuning for an estimator and saves the results in a subfolder of modeling.
@@ -176,15 +177,16 @@ def tuning_moco(
             cv_results["val_AUC_" + val_center].append(test_auc)
         print(f"Done with tuning iteration {list(grid).index(hyp) + 1} / {len(grid)}")
 
-    # saving cv_results
-    results = pd.DataFrame(cv_results)
-    results["train_AUC_mean"] = results[
-        ["train_AUC_C2_C5", "train_AUC_C1_C2", "train_AUC_C1_C5"]
-    ].mean(axis=1)
-    results["val_AUC_mean"] = results[["val_AUC_C1", "val_AUC_C2", "val_AUC_C5"]].mean(
-        axis=1
-    )
-    results.to_csv(os.path.join(out_path, f"{timestamp}_cv_results.csv"), index=False)
+        # saving cv_results at every round of the grid
+        results = pd.DataFrame(cv_results)
+        results["train_AUC_mean"] = results[
+            ["train_AUC_C2_C5", "train_AUC_C1_C2", "train_AUC_C1_C5"]
+        ].mean(axis=1)
+        results["val_AUC_mean"] = results[["val_AUC_C1", "val_AUC_C2", "val_AUC_C5"]].mean(
+            axis=1
+        )
+        results.to_csv(os.path.join(out_path, f"{timestamp}_{file_name}.csv"), index=False)
+    
     print(f"----------- GridSearchCV results saved successfully-----------")
 
     best_val_score = max(results["val_AUC_mean"])

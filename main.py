@@ -70,4 +70,5 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             scaling=input_args["scaling"],
             n_jobs=input_args["parallel"],
+            file_name=input_args["subname"],
         )
