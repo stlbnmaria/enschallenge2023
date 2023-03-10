@@ -68,6 +68,7 @@ if __name__ == "__main__":
         tuning_moco(
             model=input_args["model"],
             agg_by=input_args["aggregation"],
+            tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
             n_jobs=input_args["parallel"],
             file_name=input_args["subname"],

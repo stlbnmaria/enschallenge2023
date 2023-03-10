@@ -100,6 +100,7 @@ def train_mocov_features(
 def tuning_moco(
     model: str,
     agg_by: str = "mean",
+    tile_avg: bool = False,
     scaling: str = None,
     n_jobs: int = 6,
     data_path=Path("./storage/"),
@@ -116,7 +117,7 @@ def tuning_moco(
         samples_train,
         centers_train,
     ) = load_mocov_train_data(
-        data_path=data_path, tile_averaging=False, scaling=scaling
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling
     )
     grid = ParameterGrid(read_grid_tuning())
     out_path = os.path.join("./modeling", model)
@@ -153,20 +154,22 @@ def tuning_moco(
             # fit the model
             estimator.fit(X_fold_train, y_fold_train)
 
-            # get the predictions (1-d probability)
             preds_train = estimator.predict_proba(X_fold_train)[:, 1]
-            preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
-            y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
-            train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
-            preds_train = train_y["Target_y"]
-            y_fold_train = train_y["Target_x"]
-
             preds_val = estimator.predict_proba(X_fold_val)[:, 1]
-            preds_val = pred_aggregation(preds_val, samples_val, agg_by)
-            y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
-            val_y = pd.merge(y_fold_val, preds_val, on="Sample ID")
-            preds_val = val_y["Target_y"]
-            y_fold_val = val_y["Target_x"]
+
+            if not tile_avg:
+                # get the predictions (1-d probability)
+                preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
+                y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
+                train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
+                preds_train = train_y["Target_y"]
+                y_fold_train = train_y["Target_x"]
+
+                preds_val = pred_aggregation(preds_val, samples_val, agg_by)
+                y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
+                val_y = pd.merge(y_fold_val, preds_val, on="Sample ID")
+                preds_val = val_y["Target_y"]
+                y_fold_val = val_y["Target_x"]
 
             # compute the AUC score using scikit-learn
             train_auc = roc_auc_score(y_fold_train, preds_train)
