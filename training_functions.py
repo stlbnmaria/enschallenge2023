@@ -90,7 +90,7 @@ def train_mocov_features(
             fold += 1
         print("----------------------------")
     print(
-        f"5-fold cross-validated AUC averaged over {k+1} repeats: "
+        f"3-fold cross-validated AUC averaged over {k+1} repeats: "
         f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
     )
     return lrs

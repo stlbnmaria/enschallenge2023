@@ -58,12 +58,15 @@ if __name__ == "__main__":
     elif input_args["goal"] == "submission":
         preds = train_for_submission(
             model=input_args["model"],
-            n_jobs=input_args["parallel"],
             agg_by=input_args["aggregation"],
-            scaling=input_args["scaling"],
             tile_avg=input_args["tile_avg"],
+            scaling=input_args["scaling"],
+            n_jobs=input_args["parallel"],
         )
-        store_submission(preds, input_args["subname"])
+        store_submission(
+            preds=preds, 
+            sub_name=input_args["subname"]
+        )
     elif input_args["goal"] == "tuning":
         tuning_moco(
             model=input_args["model"],
