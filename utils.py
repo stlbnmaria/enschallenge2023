@@ -20,9 +20,11 @@ def load_mocov_train_data(
     patients_train = metadata[:, 1]
     samples_train = metadata[:, 2]
     centers_train = metadata[:, 3]
+    coords = metadata[:, 4].astype(float)
 
     # set default X_train
-    X_train = feat.copy()
+    X_train = np.column_stack((coords, feat))
+    assert X_train.shape == (344_000, 2049)
 
     if scaling is not None:
         # scale the feature values for each center seperately
@@ -46,6 +48,8 @@ def load_mocov_train_data(
         samples_train = np.hstack(
             [samples_train[c1], samples_train[c2], samples_train[c5]]
         )
+        coords = np.hstack([coords[c1], coords[c2], coords[c5]])
+        X_train = np.column_stack((coords, X_train))
         centers_train = np.sort(centers_train)
 
     if tile_averaging:
@@ -55,6 +59,7 @@ def load_mocov_train_data(
             for sample in samples_train[::1000]
         ]
         X_train = np.array(X_train)
+        assert X_train.shape == (344, 2049)
 
         # reduce the oversampled arrays
         y_train = y_train[::1000]
@@ -84,9 +89,10 @@ def load_mocov_test_data(
     patients_test = metadata[:, 0]
     samples_test = metadata[:, 1]
     centers_test = metadata[:, 2]
+    coords = metadata[:, 3].astype(float)
 
     # set default X_test
-    X_test = feat.copy()
+    X_test = np.column_stack((coords, feat))
 
     if scaling is not None:
         # scale the feature values for each center seperately
@@ -104,6 +110,8 @@ def load_mocov_test_data(
         # reorder patients, samples and centers arrays
         patients_test = np.hstack([patients_test[c3], patients_test[c4]])
         samples_test = np.hstack([samples_test[c3], samples_test[c4]])
+        coords = np.hstack([coords[c3], coords[c4]])
+        X_test = np.column_stack((coords, X_test))
         centers_test = np.sort(centers_test)
 
     if tile_averaging:
