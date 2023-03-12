@@ -3,11 +3,11 @@ from pathlib import Path
 import math
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder
 
 
 def load_mocov_train_data(
-    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None
+    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None, onehot_zoom: bool = False
 ):
     """
     This function loads the MoCov features full file for training and
@@ -22,9 +22,13 @@ def load_mocov_train_data(
     centers_train = metadata[:, 3]
     coords = metadata[:, 4].astype(float)
 
+    if onehot_zoom:
+        enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
+        coords = enc.fit_transform(coords.reshape(-1, 1))
+        coords = coords.toarray()[:, 1:]
+
     # set default X_train
     X_train = np.column_stack((coords, feat))
-    assert X_train.shape == (344_000, 2049)
 
     if scaling is not None:
         # scale the feature values for each center seperately
@@ -59,7 +63,6 @@ def load_mocov_train_data(
             for sample in samples_train[::1000]
         ]
         X_train = np.array(X_train)
-        assert X_train.shape == (344, 2049)
 
         # reduce the oversampled arrays
         y_train = y_train[::1000]
@@ -77,7 +80,7 @@ def load_mocov_train_data(
 
 
 def load_mocov_test_data(
-    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None
+    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None, onehot_zoom: bool = False
 ):
     """
     This function loads the MoCov features full file for testing and
@@ -90,6 +93,11 @@ def load_mocov_test_data(
     samples_test = metadata[:, 1]
     centers_test = metadata[:, 2]
     coords = metadata[:, 3].astype(float)
+
+    if onehot_zoom:
+        enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
+        coords = enc.fit_transform(coords.reshape(-1, 1))
+        coords = coords.toarray()[:, 1:]
 
     # set default X_test
     X_test = np.column_stack((coords, feat))

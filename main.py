@@ -34,6 +34,12 @@ parser.add_argument(
     help="Scaling MoCo features for each center (MinMax/Standard/None)",
 )
 parser.add_argument(
+    "--onehot_zoom",
+    type=bool,
+    default=False,
+    help="Perform one hot encoding on zoom levels",
+)
+parser.add_argument(
     "--parallel",
     type=int,
     default=6,
@@ -53,6 +59,7 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
+            onehot_zoom=input_args["onehot_zoom"],
             n_jobs=input_args["parallel"],
         )
     elif input_args["goal"] == "submission":
@@ -61,6 +68,7 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
+            onehot_zoom=input_args["onehot_zoom"],
             n_jobs=input_args["parallel"],
         )
         store_submission(preds=preds, sub_name=input_args["subname"])
@@ -70,6 +78,7 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
+            onehot_zoom=input_args["onehot_zoom"],
             n_jobs=input_args["parallel"],
             file_name=input_args["subname"],
         )

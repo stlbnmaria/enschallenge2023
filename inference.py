@@ -14,6 +14,7 @@ def train_for_submission(
     n_jobs: int = 6,
     tile_avg: bool = False,
     scaling: str = None,
+    onehot_zoom: bool = False,
     data_path=Path("./storage/"),
 ):
     """
@@ -33,12 +34,12 @@ def train_for_submission(
         _,
         _,
         _,
-    ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling)
+    ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom)
     estimator.fit(X_train, y_train)
 
     # load test data
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
     )
 
     # preform predictions for averaged or non averaged MoCo features
