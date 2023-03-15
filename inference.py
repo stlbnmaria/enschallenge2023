@@ -12,7 +12,7 @@ def train_for_submission(
     model: str,
     agg_by: str,
     n_jobs: int = 6,
-    tile_avg: bool = False,
+    tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
     data_path=Path("./storage/"),
@@ -43,7 +43,7 @@ def train_for_submission(
     )
 
     # preform predictions for averaged or non averaged MoCo features
-    if tile_avg:
+    if tile_avg is not None:
         preds_test = estimator.predict_proba(X_test)[:, 1]
         preds_test = pd.DataFrame({"Sample ID": samples_test, "Target": preds_test})
     else:

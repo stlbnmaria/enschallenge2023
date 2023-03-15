@@ -23,9 +23,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--tile_avg",
-    type=bool,
-    default=False,
-    help="Tile averaging means no weakly supervision",
+    type=str,
+    default=None,
+    help="Tile averaging means no weakly supervision (None/pos_avg/avg)",
 )
 parser.add_argument(
     "--scaling",

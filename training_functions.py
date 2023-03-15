@@ -23,7 +23,7 @@ def train_mocov_features(
     samples_train,
     centers_train,
     agg_by: str = "mean",
-    tile_avg: bool = False,
+    tile_avg: str = None,
     rep_cv: int = 1,
     subsampling: bool = False,
 ):
@@ -64,7 +64,7 @@ def train_mocov_features(
             preds_train = lr.predict_proba(X_fold_train)[:, 1]
             preds_val = lr.predict_proba(X_fold_val)[:, 1]
 
-            if not tile_avg:
+            if tile_avg is None:
                 preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
                 y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
                 train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
@@ -100,7 +100,7 @@ def train_mocov_features(
 def tuning_moco(
     model: str,
     agg_by: str = "mean",
-    tile_avg: bool = False,
+    tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
     n_jobs: int = 6,
@@ -158,7 +158,7 @@ def tuning_moco(
             preds_train = estimator.predict_proba(X_fold_train)[:, 1]
             preds_val = estimator.predict_proba(X_fold_val)[:, 1]
 
-            if not tile_avg:
+            if tile_avg is None:
                 # get the predictions (1-d probability)
                 preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
                 y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
@@ -200,7 +200,7 @@ def tuning_moco(
 def train_tabular(
     model: str,
     agg_by: str,
-    tile_avg: bool = False,
+    tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
     n_jobs: int = 6,

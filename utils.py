@@ -7,7 +7,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder
 
 
 def load_mocov_train_data(
-    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None, onehot_zoom: bool = False
+    data_path=Path("./storage/"), tile_averaging: str = None, scaling: str = None, onehot_zoom: bool = False
 ):
     """
     This function loads the MoCov features full file for training and
@@ -29,10 +29,15 @@ def load_mocov_train_data(
 
     # set default X_train
     X_train = np.column_stack((coords, feat))
+    if tile_averaging == "pos_avg":
+        X_train = np.where(X_train==0, np.nan, X_train)
 
     if scaling is not None:
         # scale the feature values for each center seperately
         X_train = np.empty([0, 2048])
+        if tile_averaging == "pos_avg":
+            # change zeros to nan so that they are ignored during scaling
+            feat = np.where(feat==0, np.nan, feat)
         for center in np.unique(centers_train):
             scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_train = np.vstack(
@@ -56,13 +61,21 @@ def load_mocov_train_data(
         X_train = np.column_stack((coords, X_train))
         centers_train = np.sort(centers_train)
 
-    if tile_averaging:
-        # aggregate the MoCo features by taking the mean for every sample
-        X_train = [
-            np.mean(X_train[samples_train == sample], axis=0)
-            for sample in samples_train[::1000]
-        ]
-        X_train = np.array(X_train)
+    if tile_averaging is not None:
+        if tile_averaging == "pos_avg":
+            # aggregate the MoCo features by taking the mean for every sample
+            temp = np.empty([0, 2049])
+            for sample in samples_train[::1000]:
+                features = np.nanmean(X_train[samples_train == sample], axis=0)
+                temp = np.vstack((temp, features))
+            X_train = np.where(np.isnan(temp), 0, temp)
+        elif tile_averaging == "avg":
+            # aggregate the MoCo features by taking the mean for every sample
+            X_train = [
+                np.mean(X_train[samples_train == sample], axis=0)
+                for sample in samples_train[::1000]
+            ]
+            X_train = np.array(X_train)
 
         # reduce the oversampled arrays
         y_train = y_train[::1000]
@@ -80,7 +93,7 @@ def load_mocov_train_data(
 
 
 def load_mocov_test_data(
-    data_path=Path("./storage/"), tile_averaging: bool = False, scaling: str = None, onehot_zoom: bool = False
+    data_path=Path("./storage/"), tile_averaging: str = None, scaling: str = None, onehot_zoom: bool = False
 ):
     """
     This function loads the MoCov features full file for testing and
@@ -101,10 +114,15 @@ def load_mocov_test_data(
 
     # set default X_test
     X_test = np.column_stack((coords, feat))
+    if tile_averaging == "pos_avg":
+        X_test = np.where(X_test==0, np.nan, X_test)
 
     if scaling is not None:
         # scale the feature values for each center seperately
         X_test = np.empty([0, 2048])
+        if tile_averaging == "pos_avg":
+            # change zeros to nan so that they are ignored during scaling
+            feat = np.where(feat==0, np.nan, feat)
         for center in np.unique(centers_test):
             scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_test = np.vstack(
@@ -122,13 +140,21 @@ def load_mocov_test_data(
         X_test = np.column_stack((coords, X_test))
         centers_test = np.sort(centers_test)
 
-    if tile_averaging:
-        # aggregate the MoCo features by taking the mean for every sample
-        X_test = [
-            np.mean(X_test[samples_test == sample], axis=0)
-            for sample in samples_test[::1000]
-        ]
-        X_test = np.array(X_test)
+    if tile_averaging is not None:
+        if tile_averaging == "pos_avg":
+            # aggregate the MoCo features by taking the mean for every sample
+            temp = np.empty([0, 2049])
+            for sample in samples_test[::1000]:
+                features = np.nanmean(X_test[samples_test == sample], axis=0)
+                temp = np.vstack((temp, features))
+            X_test = np.where(np.isnan(temp), 0, temp)
+        elif tile_averaging == "avg":
+            # aggregate the MoCo features by taking the mean for every sample
+            X_test = [
+                np.mean(X_test[samples_test == sample], axis=0)
+                for sample in samples_test[::1000]
+            ]
+            X_test = np.array(X_test)
 
         # reduce the oversampled arrays
         patients_test = patients_test[::1000]
