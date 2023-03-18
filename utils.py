@@ -26,6 +26,28 @@ def load_mocov_train_data(
     centers_train = metadata[:, 3]
     coords = metadata[:, 4].astype(float)
 
+    if drop_dupes:
+        df = pd.DataFrame({"patient": patients_train, 
+                            "zoom": coords})
+        df = df.loc[::1000, :]
+        # replace 15 with 17 
+        df.loc[df.zoom==15, "zoom"] = 17
+        # sort and keep only last (16 zoom levels)
+        df = df.sort_values(by='zoom', ascending=False)
+        df = df.drop_duplicates(subset='patient', keep="last")
+        idx = df.sort_index().index
+
+        idx = np.array([y for i in idx for y in list(range(i, i + 1000))])
+
+        feat = feat[idx]
+        y_train = y_train[idx]
+        patients_train = patients_train[idx]
+        samples_train = samples_train[idx]
+        centers_train = centers_train[idx]
+        coords = coords[idx]
+        assert idx.shape[0] == 305_000
+
+
     if onehot_zoom:
         enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
         coords = enc.fit_transform(coords.reshape(-1, 1))
@@ -85,24 +107,7 @@ def load_mocov_train_data(
         y_train = y_train[::1000]
         patients_train = patients_train[::1000]
         centers_train = centers_train[::1000]
-        samples_train = samples_train[::1000]
-
-        if drop_dupes:
-            df = pd.DataFrame({"patient": patients_train, 
-                               "zoom": X_train[:,0]})
-            # replace 15 with 17 
-            df.loc[df.zoom==15, "zoom"] = 17
-            # sort and keep only last (16 zoom levels)
-            df = df.sort_values(by='zoom', ascending=False)
-            df = df.drop_duplicates(subset='patient', keep="last")
-            idx = df.sort_index().index
-            X_train = X_train[idx]
-            y_train = y_train[idx]
-            patients_train = patients_train[idx]
-            samples_train = samples_train[idx]
-            centers_train = centers_train[idx]
-            assert idx.shape[0] == 305
-            
+        samples_train = samples_train[::1000]            
 
     return (
         X_train,
