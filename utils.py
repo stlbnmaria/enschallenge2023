@@ -7,7 +7,11 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder
 
 
 def load_mocov_train_data(
-    data_path=Path("./storage/"), tile_averaging: str = None, scaling: str = None, onehot_zoom: bool = False
+    data_path=Path("./storage/"), 
+    tile_averaging: str = None, 
+    scaling: str = None, 
+    onehot_zoom: bool = False, 
+    drop_dupes: bool = True,
 ):
     """
     This function loads the MoCov features full file for training and
@@ -82,6 +86,23 @@ def load_mocov_train_data(
         patients_train = patients_train[::1000]
         centers_train = centers_train[::1000]
         samples_train = samples_train[::1000]
+
+        if drop_dupes:
+            df = pd.DataFrame({"patient": patients_train, 
+                               "zoom": X_train[:,0]})
+            # replace 15 with 17 
+            df.loc[df.zoom==15, "zoom"] = 17
+            # sort and keep only last (16 zoom levels)
+            df = df.sort_values(by='zoom', ascending=False)
+            df = df.drop_duplicates(subset='patient', keep="last")
+            idx = df.sort_index().index
+            X_train = X_train[idx]
+            y_train = y_train[idx]
+            patients_train = patients_train[idx]
+            samples_train = samples_train[idx]
+            centers_train = centers_train[idx]
+            assert idx.shape[0] == 305
+            
 
     return (
         X_train,
