@@ -12,6 +12,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
 from xgboost import XGBClassifier
 
 
@@ -48,6 +49,7 @@ def get_tabular_estimator(model: str, n_jobs: int = 6):
             base_estimator=LogisticRegression(), n_jobs=n_jobs
         ),
         "LinearBoost": LinearBoostClassifier(base_estimator=LogisticRegression()),
+        "SVC": SVC(probability=True),
         "MLP": MLPClassifier(),
     }
 
