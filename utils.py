@@ -28,12 +28,13 @@ def load_mocov_train_data(
 
     if drop_dupes:
         df = pd.DataFrame({"patient": patients_train, 
-                            "zoom": coords})
+                            "zoom": coords, 
+                            "samples": samples_train})
         df = df.loc[::1000, :]
-        # replace 15 with 17 
-        df.loc[df.zoom==15, "zoom"] = 17
+        # replace 15 with 16.5 
+        # df.loc[df.zoom==15, "zoom"] = 18
         # sort and keep only last (16 zoom levels)
-        df = df.sort_values(by='zoom', ascending=False)
+        df = df.sort_values(by=['samples'], ascending=False) # ['zoom', 'samples']
         df = df.drop_duplicates(subset='patient', keep="last")
         idx = df.sort_index().index
 
