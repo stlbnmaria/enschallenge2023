@@ -103,6 +103,7 @@ def tuning_moco(
     tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
+    drop: bool = False,
     n_jobs: int = 6,
     data_path=Path("./storage/"),
     file_name: str = "cv_results",
@@ -119,7 +120,7 @@ def tuning_moco(
         centers_train,
         _,
     ) = load_mocov_train_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop,
     )
     grid = ParameterGrid(read_grid_tuning())
     out_path = os.path.join("./modeling", model)
@@ -204,6 +205,7 @@ def train_tabular(
     tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
+    drop: bool = False,
     n_jobs: int = 6,
     data_path=Path("./storage/"),
 ):
@@ -223,7 +225,7 @@ def train_tabular(
         centers_train,
         _,
     ) = load_mocov_train_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
     )
     lrs = train_mocov_features(
         estimator,

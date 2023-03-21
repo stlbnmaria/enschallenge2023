@@ -15,6 +15,7 @@ def train_for_submission(
     tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
+    drop: bool = False,
     data_path=Path("./storage/"),
 ):
     """
@@ -35,7 +36,7 @@ def train_for_submission(
         _,
         _,
         scale_dict
-    ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom)
+    ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop)
     estimator.fit(X_train, y_train)
 
     # load test data
