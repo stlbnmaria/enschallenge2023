@@ -34,12 +34,13 @@ def train_for_submission(
         _,
         _,
         _,
+        scale_dict
     ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom)
     estimator.fit(X_train, y_train)
 
     # load test data
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, scale_dict=scale_dict
     )
 
     # preform predictions for averaged or non averaged MoCo features
