@@ -12,6 +12,7 @@ def load_mocov_train_data(
     scaling: str = None, 
     onehot_zoom: bool = False, 
     drop_dupes: bool = True,
+    feat_select: bool = True, 
 ):
     """
     This function loads the MoCov features full file for training and
@@ -25,6 +26,7 @@ def load_mocov_train_data(
     samples_train = metadata[:, 2]
     centers_train = metadata[:, 3]
     coords = metadata[:, 4].astype(float)
+    imp_idx = np.array(pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:,0])
 
     if drop_dupes:
         # stack data for duplicate selection
@@ -61,16 +63,18 @@ def load_mocov_train_data(
         coords = coords[idx]
         assert idx.shape[0] == 305_000
 
-
     if onehot_zoom:
         enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
         coords = enc.fit_transform(coords.reshape(-1, 1))
         coords = coords.toarray()[:, 1:]
 
     # set default X_train
-    X_train = np.column_stack((coords, feat))
     if tile_averaging == "pos_avg":
-        X_train = np.where(X_train==0, np.nan, X_train)
+        feat = np.where(feat==0, np.nan, feat)
+    X_train = np.column_stack((coords, feat))
+    if feat_select:
+        X_train = X_train[:, imp_idx]
+        feat = feat[:, (imp_idx - 1)]
 
     if scaling is not None:
         # # scale the feature values for each center seperately
@@ -104,10 +108,7 @@ def load_mocov_train_data(
         # X_train = np.column_stack((coords, X_train))
 
         # scale the feature values for each center seperately
-        X_train = np.empty([0, 2048])
-        if tile_averaging == "pos_avg":
-            # change zeros to nan so that they are ignored during scaling
-            feat = np.where(feat==0, np.nan, feat)
+        X_train = np.empty([0, feat.shape[1]])           
         for center in np.unique(centers_train):
             scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_train = np.vstack(
@@ -127,14 +128,15 @@ def load_mocov_train_data(
         samples_train = np.hstack(
             [samples_train[c1], samples_train[c2], samples_train[c5]]
         )
-        coords = np.hstack([coords[c1], coords[c2], coords[c5]])
-        X_train = np.column_stack((coords, X_train))
+        if (0 in imp_idx) or not feat_select:
+            coords = np.hstack([coords[c1], coords[c2], coords[c5]])
+            X_train = np.column_stack((coords, X_train))
         centers_train = np.sort(centers_train)
 
     if tile_averaging is not None:
         if tile_averaging == "pos_avg":
             # aggregate the MoCo features by taking the mean for every sample
-            temp = np.empty([0, 2049])
+            temp = np.empty([0, X_train.shape[1]])
             for sample in samples_train[::1000]:
                 features = np.nanmean(X_train[samples_train == sample], axis=0)
                 temp = np.vstack((temp, features))
@@ -151,12 +153,10 @@ def load_mocov_train_data(
         y_train = y_train[::1000]
         patients_train = patients_train[::1000]
         centers_train = centers_train[::1000]
-        samples_train = samples_train[::1000]    
-
-    imp_idx = np.array(pd.read_csv("./modeling/temp.csv").iloc[:,0]) 
+        samples_train = samples_train[::1000]     
 
     return (
-        X_train[:, imp_idx],
+        X_train,
         y_train,
         patients_train,
         samples_train,
@@ -166,7 +166,12 @@ def load_mocov_train_data(
 
 
 def load_mocov_test_data(
-    data_path=Path("./storage/"), tile_averaging: str = None, scaling: str = None, onehot_zoom: bool = False, scale_dict: dict = None
+    data_path=Path("./storage/"), 
+    tile_averaging: str = None, 
+    scaling: str = None, 
+    onehot_zoom: bool = False, 
+    scale_dict: dict = None,
+    feat_select: bool = True, 
 ):
     """
     This function loads the MoCov features full file for testing and
@@ -179,6 +184,7 @@ def load_mocov_test_data(
     samples_test = metadata[:, 1]
     centers_test = metadata[:, 2]
     coords = metadata[:, 3].astype(float)
+    imp_idx = np.array(pd.read_csv("./modeling/feat_imp_01.csv").iloc[:,0]) 
 
     if onehot_zoom:
         enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
@@ -186,9 +192,12 @@ def load_mocov_test_data(
         coords = coords.toarray()[:, 1:]
 
     # set default X_test
-    X_test = np.column_stack((coords, feat))
     if tile_averaging == "pos_avg":
-        X_test = np.where(X_test==0, np.nan, X_test)
+        feat = np.where(feat==0, np.nan, feat)
+    X_test = np.column_stack((coords, feat))
+    if feat_select:
+        X_test = X_test[:, imp_idx]
+        feat = feat[:, (imp_idx - 1)]
 
     if scaling is not None:
         # # scale the feature values for each center seperately
@@ -221,10 +230,7 @@ def load_mocov_test_data(
         # X_test = np.column_stack((coords, X_test))
 
         # scale the feature values for each center seperately
-        X_test = np.empty([0, 2048])
-        if tile_averaging == "pos_avg":
-            # change zeros to nan so that they are ignored during scaling
-            feat = np.where(feat==0, np.nan, feat)
+        X_test = np.empty([0, feat.shape[1]])
         for center in np.unique(centers_test):
             scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_test = np.vstack(
@@ -238,14 +244,15 @@ def load_mocov_test_data(
         # reorder patients, samples and centers arrays
         patients_test = np.hstack([patients_test[c3], patients_test[c4]])
         samples_test = np.hstack([samples_test[c3], samples_test[c4]])
-        coords = np.hstack([coords[c3], coords[c4]])
-        X_test = np.column_stack((coords, X_test))
+        if (0 in imp_idx) or not feat_select:
+            coords = np.hstack([coords[c3], coords[c4]])
+            X_test = np.column_stack((coords, X_test))
         centers_test = np.sort(centers_test)
 
     if tile_averaging is not None:
         if tile_averaging == "pos_avg":
             # aggregate the MoCo features by taking the mean for every sample
-            temp = np.empty([0, 2049])
+            temp = np.empty([0, X_test.shape[1]])
             for sample in samples_test[::1000]:
                 features = np.nanmean(X_test[samples_test == sample], axis=0)
                 temp = np.vstack((temp, features))
@@ -263,9 +270,7 @@ def load_mocov_test_data(
         centers_test = centers_test[::1000]
         samples_test = samples_test[::1000]
 
-    imp_idx = np.array(pd.read_csv("./modeling/temp.csv").iloc[:,0]) 
-
-    return X_test[:, imp_idx], patients_test, samples_test, centers_test
+    return X_test, patients_test, samples_test, centers_test
 
 
 def pred_aggregation(
