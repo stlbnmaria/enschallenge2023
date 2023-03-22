@@ -9,6 +9,7 @@ from sklearn.model_selection import GroupKFold, ParameterGrid
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.metrics import roc_auc_score
+from sklearn.base import clone
 
 from modeling.tabular_models import get_tabular_estimator, read_grid_tuning
 from utils import pred_aggregation, load_mocov_train_data
@@ -56,9 +57,9 @@ def train_mocov_features(
                 samples_fold = samples_fold[sub_index]
 
             # instantiate the model
-            lr = model
+            lr = clone(model)
             # fit it
-            lr.fit(X_fold_train, y_fold_train)
+            lr = lr.fit(X_fold_train, y_fold_train)
 
             # get the predictions (1-d probability)
             preds_train = lr.predict_proba(X_fold_train)[:, 1]
