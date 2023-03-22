@@ -3,15 +3,9 @@ import os
 from ast import literal_eval
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
-from lineartree import (
-    LinearTreeClassifier,
-    LinearBoostClassifier,
-)
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 
