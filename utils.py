@@ -184,7 +184,7 @@ def load_mocov_test_data(
     samples_test = metadata[:, 1]
     centers_test = metadata[:, 2]
     coords = metadata[:, 3].astype(float)
-    imp_idx = np.array(pd.read_csv("./modeling/feat_imp_01.csv").iloc[:,0]) 
+    imp_idx = np.array(pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:,0]) 
 
     if onehot_zoom:
         enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])

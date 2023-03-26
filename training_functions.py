@@ -5,11 +5,12 @@ from pathlib import Path
 import math
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GroupKFold, ParameterGrid
+from sklearn.model_selection import GroupKFold, ParameterGrid, train_test_split
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.metrics import roc_auc_score
 from sklearn.base import clone
+from sklearn.ensemble import StackingClassifier
 
 from modeling.tabular_models import get_tabular_estimator, read_grid_tuning
 from utils import pred_aggregation, load_mocov_train_data
@@ -93,6 +94,48 @@ def train_mocov_features(
     print(
         f"3-fold cross-validated AUC averaged over {k+1} repeats: "
         f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
+    )
+    return lrs
+
+
+def train_tabular(
+    model: str,
+    agg_by: str,
+    tile_avg: str = None,
+    scaling: str = None,
+    onehot_zoom: bool = False,
+    drop: bool = False,
+    n_jobs: int = 6,
+    data_path=Path("./storage/"),
+):
+    """
+    This function trains the tabular data.
+    """
+    grid = read_grid_tuning()
+    estimator = get_tabular_estimator(model, n_jobs)
+    if grid is not None:
+        estimator.set_params(**grid)
+
+    (
+        X_train,
+        y_train,
+        patients_train,
+        samples_train,
+        centers_train,
+        _,
+    ) = load_mocov_train_data(
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
+    )
+    lrs = train_mocov_features(
+        estimator,
+        X_train,
+        y_train,
+        patients_train,
+        samples_train,
+        centers_train,
+        agg_by,
+        tile_avg=tile_avg,
+        subsampling=False,
     )
     return lrs
 
@@ -200,9 +243,9 @@ def tuning_moco(
     print(f"----------- Best avg. validation AUC: {best_val_score:.3f} -----------")
 
 
-def train_tabular(
-    model: str,
-    agg_by: str,
+@ignore_warnings(category=ConvergenceWarning)
+def stacking_estimators(
+    models: list,
     tile_avg: str = None,
     scaling: str = None,
     onehot_zoom: bool = False,
@@ -211,32 +254,57 @@ def train_tabular(
     data_path=Path("./storage/"),
 ):
     """
-    This function trains the tabular data.
-    """
-    grid = read_grid_tuning()
-    estimator = get_tabular_estimator(model, n_jobs)
-    if grid is not None:
-        estimator.set_params(**grid)
 
+    """
     (
         X_train,
         y_train,
-        patients_train,
-        samples_train,
+        _,
+        _,
         centers_train,
         _,
     ) = load_mocov_train_data(
         data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
     )
-    lrs = train_mocov_features(
-        estimator,
-        X_train,
-        y_train,
-        patients_train,
-        samples_train,
-        centers_train,
-        agg_by,
-        tile_avg=tile_avg,
-        subsampling=False,
+    aucs = []
+    lrs = []
+    kfold = GroupKFold(n_splits=3)
+
+    # grid = read_grid_tuning()
+    estimators = [(model, get_tabular_estimator(model, n_jobs)) for model in models]
+    # if grid is not None:
+    #     estimator.set_params(**grid)
+
+    # split is performed at the center level
+    for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
+        # set the training and validation folds
+        X_base, X_second, y_base, y_second = train_test_split(X_train[train_idx_], y_train[train_idx_], 
+                                                              test_size=0.1, random_state=0, stratify=centers_train[train_idx_])
+
+        X_fold_val = X_train[val_idx_]
+        y_fold_val = y_train[val_idx_]
+        val_center = np.unique(centers_train[val_idx_])[0]
+
+        # instantiate the model
+        estimators = [(model[0], clone(model[1]).fit(X_base, y_base)) for model in estimators]
+
+        stack = StackingClassifier(estimators, cv="prefit", stack_method="predict_proba")
+        stack.fit(X_second, y_second)
+
+        # get the predictions (1-d probability)
+        preds_val = stack.predict_proba(X_fold_val)[:, 1]
+
+        # compute the AUC score using scikit-learn
+        test_auc = roc_auc_score(y_fold_val, preds_val)
+        print(
+            f"AUC validation center {val_center}: Val - {test_auc:.3f}"
+        )
+        aucs.append(test_auc)
+        # add the logistic regression to the list of classifiers
+        lrs.append(stack)
+    print("----------------------------")
+    print(
+        f"3-fold cross-validated AUC averaged: "
+        f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
     )
     return lrs

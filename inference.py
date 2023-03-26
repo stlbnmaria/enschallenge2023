@@ -3,6 +3,9 @@ import time
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.base import clone
+from sklearn.ensemble import StackingClassifier
 
 from utils import load_mocov_test_data, pred_aggregation, load_mocov_train_data
 from modeling.tabular_models import read_grid_tuning, get_tabular_estimator
@@ -51,6 +54,54 @@ def train_for_submission(
     else:
         temp = estimator.predict_proba(X_test)[:, 1]
         preds_test = pred_aggregation(temp, samples_test, agg_by)
+
+    return preds_test
+
+
+def train_stacked_submission(
+    models: list,
+    tile_avg: str = None,
+    scaling: str = None,
+    onehot_zoom: bool = False,
+    drop: bool = False,
+    n_jobs: int = 6,
+    data_path=Path("./storage/"),
+):
+    """
+    This function trains an estimator on the whole train data and
+    predicts the probability for the test data set.
+    """
+    (
+        X_train,
+        y_train,
+        _,
+        _,
+        centers_train,
+        scale_dict,
+    ) = load_mocov_train_data(
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
+    )
+
+    estimators = [(model, get_tabular_estimator(model, n_jobs)) for model in models]
+
+    # set the training and validation folds
+    X_base, X_second, y_base, y_second = train_test_split(X_train, y_train, 
+                                                            test_size=0.1, random_state=0, stratify=centers_train)
+
+
+    # instantiate the model
+    estimators = [(model[0], clone(model[1]).fit(X_base, y_base)) for model in estimators]
+
+    stack = StackingClassifier(estimators, cv="prefit", stack_method="predict_proba")
+    stack.fit(X_second, y_second)
+
+    # load test data
+    X_test, _, samples_test, _ = load_mocov_test_data(
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, scale_dict=scale_dict
+    )
+
+    preds_test = stack.predict_proba(X_test)[:, 1]
+    preds_test = pd.DataFrame({"Sample ID": samples_test, "Target": preds_test})
 
     return preds_test
 

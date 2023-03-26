@@ -1,7 +1,8 @@
 import argparse
+from ast import literal_eval
 
-from inference import store_submission, train_for_submission
-from training_functions import train_tabular, tuning_moco
+from inference import store_submission, train_for_submission, train_stacked_submission
+from training_functions import train_tabular, tuning_moco, stacking_estimators
 
 ###############################################################################
 
@@ -10,7 +11,7 @@ parser.add_argument(
     "--model", type=str, default=r"XGB", help="Type of model to run training"
 )
 parser.add_argument(
-    "--goal", type=str, default=r"test", help="Goal of the run (test/submission/tuning)"
+    "--goal", type=str, default=r"test", help="Goal of the run (test/submission/tuning/stacking)"
 )
 parser.add_argument(
     "--subname", type=str, default=r"test", help="Name of the submission"
@@ -80,6 +81,18 @@ if __name__ == "__main__":
             n_jobs=input_args["parallel"],
         )
         store_submission(preds=preds, sub_name=input_args["subname"])
+    elif input_args["goal"] == "stacked_submission":
+        models = literal_eval(input_args["model"])
+        assert isinstance(models, list)
+        preds = train_stacked_submission(
+            models=models,
+            tile_avg=input_args["tile_avg"],
+            scaling=input_args["scaling"],
+            onehot_zoom=input_args["onehot_zoom"],
+            drop=input_args["drop"],
+            n_jobs=input_args["parallel"],
+        )
+        store_submission(preds=preds, sub_name=input_args["subname"])
     elif input_args["goal"] == "tuning":
         tuning_moco(
             model=input_args["model"],
@@ -90,4 +103,15 @@ if __name__ == "__main__":
             drop=input_args["drop"],
             n_jobs=input_args["parallel"],
             file_name=input_args["subname"],
+        )
+    elif input_args["goal"] == "stacking":
+        models = literal_eval(input_args["model"])
+        assert isinstance(models, list)
+        stacking_estimators(
+            models=models,
+            tile_avg=input_args["tile_avg"],
+            scaling=input_args["scaling"],
+            onehot_zoom=input_args["onehot_zoom"],
+            drop=input_args["drop"],
+            n_jobs=input_args["parallel"],
         )

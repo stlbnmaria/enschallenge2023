@@ -33,8 +33,8 @@ def get_tabular_estimator(model: str, n_jobs: int = 6):
     # define dict of potential estimators
     estimators = {
         "LogReg": LogisticRegression(),
-        "RF": RandomForestClassifier(n_jobs=n_jobs),
-        "ExtraTrees": ExtraTreesClassifier(n_jobs=n_jobs),
+        "RF": RandomForestClassifier(n_jobs=n_jobs, max_features=1),
+        "ExtraTrees": ExtraTreesClassifier(n_jobs=n_jobs, max_features=1),
         "XGB": XGBClassifier(n_jobs=n_jobs),
         "Catboost": CatBoostClassifier(verbose=0),
         "LightGBM": LGBMClassifier(n_jobs=n_jobs),
