@@ -1,7 +1,6 @@
 from pathlib import Path
 import time
 
-import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.base import clone
@@ -38,13 +37,12 @@ def train_for_submission(
         _,
         _,
         _,
-        scale_dict
     ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop)
     estimator.fit(X_train, y_train)
 
     # load test data
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, scale_dict=scale_dict
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
     )
 
     # preform predictions for averaged or non averaged MoCo features
@@ -77,7 +75,6 @@ def train_stacked_submission(
         _,
         _,
         centers_train,
-        scale_dict,
     ) = load_mocov_train_data(
         data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
     )
@@ -97,7 +94,7 @@ def train_stacked_submission(
 
     # load test data
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, scale_dict=scale_dict
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
     )
 
     preds_test = stack.predict_proba(X_test)[:, 1]

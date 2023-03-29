@@ -122,7 +122,6 @@ def train_tabular(
         patients_train,
         samples_train,
         centers_train,
-        _,
     ) = load_mocov_train_data(
         data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
     )
@@ -162,7 +161,6 @@ def tuning_moco(
         patients_train,
         samples_train,
         centers_train,
-        _,
     ) = load_mocov_train_data(
         data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop,
     )
@@ -262,7 +260,6 @@ def stacking_estimators(
         _,
         _,
         centers_train,
-        _,
     ) = load_mocov_train_data(
         data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
     )

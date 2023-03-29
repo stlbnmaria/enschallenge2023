@@ -77,36 +77,6 @@ def load_mocov_train_data(
         feat = feat[:, (imp_idx - 1)]
 
     if scaling is not None:
-        # # scale the feature values for each center seperately
-        # X_train = np.empty([0, 2048])
-        scale_dict = {}
-        # if tile_averaging == "pos_avg":
-        #     # change zeros to nan so that they are ignored during scaling
-        #     feat = np.where(feat==0, np.nan, feat)
-        # for zoom in np.unique(coords):
-        #     scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
-        #     X_train = np.vstack(
-        #         [X_train, scaler.fit_transform(feat[coords == zoom])]
-        #     )
-        #     scale_dict[zoom] = scaler
-
-        # # conditions for the three centers to reorder the other arrays
-        # c1 = coords == 15.
-        # c2 = coords == 16.
-        # c5 = coords == 17.
-
-        # # reorder y, patients, samples and centers arrays
-        # y_train = np.hstack([y_train[c1], y_train[c2], y_train[c5]])
-        # patients_train = np.hstack(
-        #     [patients_train[c1], patients_train[c2], patients_train[c5]]
-        # )
-        # samples_train = np.hstack(
-        #     [samples_train[c1], samples_train[c2], samples_train[c5]]
-        # )
-        # coords = np.hstack([coords[c1], coords[c2], coords[c5]])
-        # centers_train = np.hstack([centers_train[c1], centers_train[c2], centers_train[c5]])
-        # X_train = np.column_stack((coords, X_train))
-
         # scale the feature values for each center seperately
         X_train = np.empty([0, feat.shape[1]])           
         for center in np.unique(centers_train):
@@ -161,7 +131,6 @@ def load_mocov_train_data(
         patients_train,
         samples_train,
         centers_train,
-        scale_dict
     )
 
 
@@ -169,8 +138,7 @@ def load_mocov_test_data(
     data_path=Path("./storage/"), 
     tile_averaging: str = None, 
     scaling: str = None, 
-    onehot_zoom: bool = False, 
-    scale_dict: dict = None,
+    onehot_zoom: bool = False,
     feat_select: bool = True, 
 ):
     """
@@ -200,35 +168,6 @@ def load_mocov_test_data(
         feat = feat[:, (imp_idx - 1)]
 
     if scaling is not None:
-        # # scale the feature values for each center seperately
-        # X_test = np.empty([0, 2048])
-        # if tile_averaging == "pos_avg":
-        #     # change zeros to nan so that they are ignored during scaling
-        #     feat = np.where(feat==0, np.nan, feat)
-        # for zoom in np.unique(coords):
-        #     if zoom == 14.:
-        #         scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
-        #         X_test = np.vstack(
-        #             [X_test, scaler.fit_transform(feat[coords == zoom])]
-        #         )
-        #     else: 
-        #         X_test = np.vstack(
-        #             [X_test, scale_dict[zoom].transform(feat[coords == zoom])]
-        #         )
-
-        # # conditions for the three centers to reorder the other arrays
-        # c3 = coords == 14.
-        # c4 = coords == 15.
-        # c5 = coords == 16.
-        # c6 = coords == 17.
-
-        # # reorder patients, samples and centers arrays
-        # patients_test = np.hstack([patients_test[c3], patients_test[c4], patients_test[c5], patients_test[c6]])
-        # samples_test = np.hstack([samples_test[c3], samples_test[c4], samples_test[c5], samples_test[c6]])
-        # coords = np.hstack([coords[c3], coords[c4], coords[c5], coords[c6]])
-        # centers_test = np.hstack([centers_test[c3], centers_test[c4], centers_test[c5], centers_test[c6]])
-        # X_test = np.column_stack((coords, X_test))
-
         # scale the feature values for each center seperately
         X_test = np.empty([0, feat.shape[1]])
         for center in np.unique(centers_test):
