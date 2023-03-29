@@ -35,12 +35,6 @@ parser.add_argument(
     help="Scaling MoCo features for each center (MinMax/Standard/None)",
 )
 parser.add_argument(
-    "--onehot_zoom",
-    type=bool,
-    default=False,
-    help="Perform one hot encoding on zoom levels",
-)
-parser.add_argument(
     "--drop",
     type=bool,
     default=False,
@@ -66,7 +60,6 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
-            onehot_zoom=input_args["onehot_zoom"],
             drop=input_args["drop"],
             n_jobs=input_args["parallel"],
         )
@@ -76,7 +69,6 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
-            onehot_zoom=input_args["onehot_zoom"],
             drop=input_args["drop"],
             n_jobs=input_args["parallel"],
         )
@@ -88,7 +80,6 @@ if __name__ == "__main__":
             models=models,
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
-            onehot_zoom=input_args["onehot_zoom"],
             drop=input_args["drop"],
             n_jobs=input_args["parallel"],
         )
@@ -99,7 +90,6 @@ if __name__ == "__main__":
             agg_by=input_args["aggregation"],
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
-            onehot_zoom=input_args["onehot_zoom"],
             drop=input_args["drop"],
             n_jobs=input_args["parallel"],
             file_name=input_args["subname"],
@@ -111,7 +101,6 @@ if __name__ == "__main__":
             models=models,
             tile_avg=input_args["tile_avg"],
             scaling=input_args["scaling"],
-            onehot_zoom=input_args["onehot_zoom"],
             drop=input_args["drop"],
             n_jobs=input_args["parallel"],
         )

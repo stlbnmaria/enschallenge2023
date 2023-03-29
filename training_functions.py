@@ -103,7 +103,6 @@ def train_tabular(
     agg_by: str,
     tile_avg: str = None,
     scaling: str = None,
-    onehot_zoom: bool = False,
     drop: bool = False,
     n_jobs: int = 6,
     data_path=Path("./storage/"),
@@ -123,7 +122,7 @@ def train_tabular(
         samples_train,
         centers_train,
     ) = load_mocov_train_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, drop_dupes=drop
     )
     lrs = train_mocov_features(
         estimator,
@@ -145,7 +144,6 @@ def tuning_moco(
     agg_by: str = "mean",
     tile_avg: str = None,
     scaling: str = None,
-    onehot_zoom: bool = False,
     drop: bool = False,
     n_jobs: int = 6,
     data_path=Path("./storage/"),
@@ -162,7 +160,7 @@ def tuning_moco(
         samples_train,
         centers_train,
     ) = load_mocov_train_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop,
+        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, drop_dupes=drop,
     )
     grid = ParameterGrid(read_grid_tuning())
     out_path = os.path.join("./modeling", model)

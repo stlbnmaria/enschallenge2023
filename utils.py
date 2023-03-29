@@ -9,8 +9,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder
 def load_mocov_train_data(
     data_path=Path("./storage/"), 
     tile_averaging: str = None, 
-    scaling: str = None, 
-    onehot_zoom: bool = False, 
+    scaling: str = None,
     drop_dupes: bool = True,
     feat_select: bool = True, 
 ):
@@ -62,11 +61,6 @@ def load_mocov_train_data(
         centers_train = centers_train[idx]
         coords = coords[idx]
         assert idx.shape[0] == 305_000
-
-    if onehot_zoom:
-        enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
-        coords = enc.fit_transform(coords.reshape(-1, 1))
-        coords = coords.toarray()[:, 1:]
 
     # set default X_train
     if tile_averaging == "pos_avg":
@@ -138,7 +132,6 @@ def load_mocov_test_data(
     data_path=Path("./storage/"), 
     tile_averaging: str = None, 
     scaling: str = None, 
-    onehot_zoom: bool = False,
     feat_select: bool = True, 
 ):
     """
@@ -153,11 +146,6 @@ def load_mocov_test_data(
     centers_test = metadata[:, 2]
     coords = metadata[:, 3].astype(float)
     imp_idx = np.array(pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:,0]) 
-
-    if onehot_zoom:
-        enc = OneHotEncoder(categories=[[14., 15., 16., 17.]])
-        coords = enc.fit_transform(coords.reshape(-1, 1))
-        coords = coords.toarray()[:, 1:]
 
     # set default X_test
     if tile_averaging == "pos_avg":
