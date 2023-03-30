@@ -1,4 +1,5 @@
 import os
+from typing import Optional, Any
 
 from ast import literal_eval
 from catboost import CatBoostClassifier
@@ -10,7 +11,7 @@ from sklearn.svm import SVC
 from xgboost import XGBClassifier
 
 
-def read_grid_tuning(path: str = "./modeling/"):
+def read_grid_tuning(path: str = "./modeling/") -> Optional[dict]:
     """
     This function loads the modeling inputs from a predefined excel input,
     e.g. the hyperparameter grid.
@@ -29,7 +30,7 @@ def read_grid_tuning(path: str = "./modeling/"):
     return grid
 
 
-def get_tabular_estimator(model: str, n_jobs: int = 6):
+def get_tabular_estimator(model: str, n_jobs: int = 6) -> Any:
     """
     This function returns the corresponding estimator to the
     specified string argunent.
