@@ -30,6 +30,10 @@ def read_grid_tuning(path: str = "./modeling/"):
 
 
 def get_tabular_estimator(model: str, n_jobs: int = 6):
+    """
+    This function returns the corresponding estimator to the
+    specified string argunent.
+    """
     # define dict of potential estimators
     estimators = {
         "LogReg": LogisticRegression(),
