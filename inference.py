@@ -1,5 +1,6 @@
 from pathlib import Path
 import time
+from typing import Union
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -11,38 +12,61 @@ from modeling.tabular_models import read_grid_tuning, get_tabular_estimator
 
 
 def train_for_submission(
-    model: str,
+    model: Union[str, list],
     agg_by: str,
     n_jobs: int = 6,
     tile_avg: str = None,
     scaling: str = None,
-    drop: bool = False,
-    data_path=Path("./storage/"),
-):
+    drop: bool = True,
+    feat_select: bool = True,
+) -> pd.DataFrame:
     """
-    This function trains an estimator on the whole train data and
-    predicts the probability for the test data set.
+    This function trains an estimator or a list of estimators as stacking
+    on the whole train data and predicts the probability for the test data set.
     """
-    # load estimator and grid
-    grid = read_grid_tuning()
-    estimator = get_tabular_estimator(model, n_jobs)
-    if grid is not None:
-        estimator.set_params(**grid)
-
-    # fit the model on the train data
-    (
-        X_train,
-        y_train,
-        _,
-        _,
-        _,
-    ) = load_mocov_train_data(tile_averaging=tile_avg, scaling=scaling, drop_dupes=drop)
-    estimator.fit(X_train, y_train)
+    # load train data
+    X_train, y_train, _, _, centers_train = load_mocov_train_data(
+        tile_averaging=tile_avg,
+        scaling=scaling,
+        drop_dupes=drop,
+        feat_select=feat_select,
+    )
 
     # load test data
     X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling,
+        tile_averaging=tile_avg,
+        scaling=scaling,
+        feat_select=feat_select,
     )
+
+    if isinstance(model, list):
+        # set the training folds for the base models and second layer estimator
+        X_base, X_second, y_base, y_second = train_test_split(
+            X_train, y_train, test_size=0.1, random_state=0, stratify=centers_train
+        )
+
+        # get estimators from string
+        estimators = [(estim, get_tabular_estimator(estim, n_jobs)) for estim in model]
+
+        # perform fit on base models
+        estimators = [
+            (estim[0], clone(estim[1]).fit(X_base, y_base)) for estim in estimators
+        ]
+
+        # fit second layer model
+        estimator = StackingClassifier(
+            estimators, cv="prefit", stack_method="predict_proba"
+        )
+        estimator.fit(X_second, y_second)
+
+    else:
+        # load estimator and grid
+        grid = read_grid_tuning()
+        estimator = get_tabular_estimator(model, n_jobs)
+        if grid is not None:
+            estimator.set_params(**grid)
+        # fit model
+        estimator.fit(X_train, y_train)
 
     # preform predictions for averaged or non averaged MoCo features
     if tile_avg is not None:
@@ -55,58 +79,11 @@ def train_for_submission(
     return preds_test
 
 
-def train_stacked_submission(
-    models: list,
-    tile_avg: str = None,
-    scaling: str = None,
-    onehot_zoom: bool = False,
-    drop: bool = False,
-    n_jobs: int = 6,
-    data_path=Path("./storage/"),
-):
-    """
-    This function trains an estimator on the whole train data and
-    predicts the probability for the test data set.
-    """
-    (
-        X_train,
-        y_train,
-        _,
-        _,
-        centers_train,
-    ) = load_mocov_train_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom, drop_dupes=drop
-    )
-
-    estimators = [(model, get_tabular_estimator(model, n_jobs)) for model in models]
-
-    # set the training and validation folds
-    X_base, X_second, y_base, y_second = train_test_split(X_train, y_train, 
-                                                            test_size=0.1, random_state=0, stratify=centers_train)
-
-
-    # instantiate the model
-    estimators = [(model[0], clone(model[1]).fit(X_base, y_base)) for model in estimators]
-
-    stack = StackingClassifier(estimators, cv="prefit", stack_method="predict_proba")
-    stack.fit(X_second, y_second)
-
-    # load test data
-    X_test, _, samples_test, _ = load_mocov_test_data(
-        data_path=data_path, tile_averaging=tile_avg, scaling=scaling, onehot_zoom=onehot_zoom
-    )
-
-    preds_test = stack.predict_proba(X_test)[:, 1]
-    preds_test = pd.DataFrame({"Sample ID": samples_test, "Target": preds_test})
-
-    return preds_test
-
-
 def store_submission(
     preds: pd.DataFrame,
     sub_name: str,
     submission_path=Path("./submissions"),
-):
+) -> None:
     """
     This functions combines the sample ids in the test data set and the
     predictions from an ML model to save a csv that can be directly uploaded
