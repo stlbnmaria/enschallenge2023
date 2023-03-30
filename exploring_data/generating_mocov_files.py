@@ -41,7 +41,13 @@ def write_mocov_train(data_path=Path("../storage")):
 
     # store csv
     output = np.vstack(
-        (y_train[1:], patients_train[1:], samples_train[1:], centers_train[1:], coords[1:])
+        (
+            y_train[1:],
+            patients_train[1:],
+            samples_train[1:],
+            centers_train[1:],
+            coords[1:],
+        )
     ).T
     np.savez_compressed(
         data_path / "train_input" / "mocov_features_train",
@@ -84,7 +90,9 @@ def write_mocov_test(data_path=Path("../storage")):
         coords = np.hstack((coords, coord[:, 0]))
 
     # store csv
-    output = np.vstack((patients_train[1:], samples_train[1:], centers_train[1:], coords[1:])).T
+    output = np.vstack(
+        (patients_train[1:], samples_train[1:], centers_train[1:], coords[1:])
+    ).T
     np.savez_compressed(
         data_path / "test_input" / "mocov_features_test",
         metadata=output,
