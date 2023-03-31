@@ -3,20 +3,22 @@ from pathlib import Path
 import math
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 def load_mocov_train_data(
-    data_path=Path("./storage/"), 
-    tile_averaging: str = None, 
+    data_path=Path("./storage/"),
+    tile_averaging: str = None,
     scaling: str = None,
     drop_dupes: bool = True,
-    feat_select: bool = True, 
-):
+    feat_select: bool = True,
+) -> tuple[np.array]:
     """
     This function loads the MoCov features full file for training and
-    performs averaging over the tiles per sample as default.
+    returns X, y, patients, samples and centers.
+    Per default, duplicates are droped and feature selection is performed.
     """
+    # load numpy input file and feature selection csv
     input = np.load(data_path / "train_input" / "mocov_features_train.npz")
     metadata = input["metadata"]
     feat = input["features"].astype(float)
@@ -25,35 +27,63 @@ def load_mocov_train_data(
     samples_train = metadata[:, 2]
     centers_train = metadata[:, 3]
     coords = metadata[:, 4].astype(float)
-    imp_idx = np.array(pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:,0])
+    imp_idx = np.array(
+        pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:, 0]
+    )
 
+    # drop manually selected duplicates
     if drop_dupes:
-        # stack data for duplicate selection
-        df = pd.DataFrame({"patient": patients_train, 
-                            "zoom": coords, 
-                            "samples": samples_train})
+        # stack data for duplicate selection
+        df = pd.DataFrame({"zoom": coords, "samples": samples_train})
         df = df.loc[::1000, :]
         # specify manual prod list of samples
-        drop_list = ['ID_014.npy', 'ID_028.npy', 'ID_052.npy', 
-                     'ID_117.npy','ID_130.npy', 'ID_132.npy', 
-                     'ID_233.npy', 'ID_474.npy', 'ID_260.npy', 
-                     'ID_296.npy', 'ID_324.npy', 'ID_355.npy', 
-                     'ID_440.npy', 'ID_455.npy',
-                     'ID_074.npy', 'ID_083.npy', 'ID_102.npy', 
-                     'ID_094.npy', 'ID_243.npy', 'ID_055.npy', 
-                     'ID_257.npy', 'ID_272.npy', 'ID_274.npy', 
-                     'ID_278.npy', 'ID_279.npy', 'ID_316.npy', 
-                     'ID_328.npy', 'ID_334.npy', 'ID_099.npy', 
-                     'ID_358.npy', 'ID_371.npy', 'ID_411.npy', 
-                     'ID_437.npy', 'ID_460.npy', 'ID_461.npy', 
-                     'ID_465.npy', 'ID_481.npy', 
-                     'ID_484.npy', 'ID_491.npy']
-        # extract index for samples to keep and replicate the original list for tiles
+        drop_list = [
+            "ID_014.npy",
+            "ID_028.npy",
+            "ID_052.npy",
+            "ID_117.npy",
+            "ID_130.npy",
+            "ID_132.npy",
+            "ID_233.npy",
+            "ID_474.npy",
+            "ID_260.npy",
+            "ID_296.npy",
+            "ID_324.npy",
+            "ID_355.npy",
+            "ID_440.npy",
+            "ID_455.npy",
+            "ID_074.npy",
+            "ID_083.npy",
+            "ID_102.npy",
+            "ID_094.npy",
+            "ID_243.npy",
+            "ID_055.npy",
+            "ID_257.npy",
+            "ID_272.npy",
+            "ID_274.npy",
+            "ID_278.npy",
+            "ID_279.npy",
+            "ID_316.npy",
+            "ID_328.npy",
+            "ID_334.npy",
+            "ID_099.npy",
+            "ID_358.npy",
+            "ID_371.npy",
+            "ID_411.npy",
+            "ID_437.npy",
+            "ID_460.npy",
+            "ID_461.npy",
+            "ID_465.npy",
+            "ID_481.npy",
+            "ID_484.npy",
+            "ID_491.npy",
+        ]
+        # extract index for samples to keep and replicate the original index list for tiles
         df = df[~df.samples.isin(drop_list)]
         idx = df.sort_index().index
         idx = np.array([y for i in idx for y in list(range(i, i + 1000))])
 
-        # filter data according to index - leaving 305 samples
+        # filter data according to index - leaving 305 samples
         feat = feat[idx]
         y_train = y_train[idx]
         patients_train = patients_train[idx]
@@ -64,15 +94,16 @@ def load_mocov_train_data(
 
     # set default X_train
     if tile_averaging == "pos_avg":
-        feat = np.where(feat==0, np.nan, feat)
+        feat = np.where(feat == 0, np.nan, feat)
     X_train = np.column_stack((coords, feat))
+    # drop features with low feature importance
     if feat_select:
         X_train = X_train[:, imp_idx]
         feat = feat[:, (imp_idx - 1)]
 
+    # scale the feature values for each center seperately
     if scaling is not None:
-        # scale the feature values for each center seperately
-        X_train = np.empty([0, feat.shape[1]])           
+        X_train = np.empty([0, feat.shape[1]])
         for center in np.unique(centers_train):
             scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
             X_train = np.vstack(
@@ -98,26 +129,19 @@ def load_mocov_train_data(
         centers_train = np.sort(centers_train)
 
     if tile_averaging is not None:
-        if tile_averaging == "pos_avg":
-            # aggregate the MoCo features by taking the mean for every sample
-            temp = np.empty([0, X_train.shape[1]])
-            for sample in samples_train[::1000]:
-                features = np.nanmean(X_train[samples_train == sample], axis=0)
-                temp = np.vstack((temp, features))
-            X_train = np.where(np.isnan(temp), 0, temp)
-        elif tile_averaging == "avg":
-            # aggregate the MoCo features by taking the mean for every sample
-            X_train = [
-                np.mean(X_train[samples_train == sample], axis=0)
+        # aggregate the MoCo features by taking the mean for every sample
+        X_train = [
+                np.nanmean(X_train[samples_train == sample], axis=0)
                 for sample in samples_train[::1000]
             ]
-            X_train = np.array(X_train)
+        X_train = np.array(X_train)
+        X_train = np.where(np.isnan(X_train), 0, X_train)
 
         # reduce the oversampled arrays
         y_train = y_train[::1000]
         patients_train = patients_train[::1000]
         centers_train = centers_train[::1000]
-        samples_train = samples_train[::1000]     
+        samples_train = samples_train[::1000]
 
     return (
         X_train,
@@ -129,15 +153,16 @@ def load_mocov_train_data(
 
 
 def load_mocov_test_data(
-    data_path=Path("./storage/"), 
-    tile_averaging: str = None, 
-    scaling: str = None, 
-    feat_select: bool = True, 
-):
+    data_path=Path("./storage/"),
+    tile_averaging: str = None,
+    scaling: str = None,
+    feat_select: bool = True,
+) -> tuple[np.array]:
     """
     This function loads the MoCov features full file for testing and
-    performs averaging over the tiles per sample as default.
+    returns X, y, patients, and samples. Per default, feature selection is performed.
     """
+    # load numpy input file and feature selection csv
     input = np.load(data_path / "test_input" / "mocov_features_test.npz")
     metadata = input["metadata"]
     feat = input["features"].astype(float)
@@ -145,18 +170,21 @@ def load_mocov_test_data(
     samples_test = metadata[:, 1]
     centers_test = metadata[:, 2]
     coords = metadata[:, 3].astype(float)
-    imp_idx = np.array(pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:,0]) 
+    imp_idx = np.array(
+        pd.read_csv("./modeling/feature_importance/feat_imp_01.csv").iloc[:, 0]
+    )
 
     # set default X_test
     if tile_averaging == "pos_avg":
-        feat = np.where(feat==0, np.nan, feat)
+        feat = np.where(feat == 0, np.nan, feat)
     X_test = np.column_stack((coords, feat))
+    # drop features with low feature importance
     if feat_select:
         X_test = X_test[:, imp_idx]
         feat = feat[:, (imp_idx - 1)]
 
+    # scale the feature values for each center seperately
     if scaling is not None:
-        # scale the feature values for each center seperately
         X_test = np.empty([0, feat.shape[1]])
         for center in np.unique(centers_test):
             scaler = {"MinMax": MinMaxScaler(), "Standard": StandardScaler()}[scaling]
@@ -177,20 +205,13 @@ def load_mocov_test_data(
         centers_test = np.sort(centers_test)
 
     if tile_averaging is not None:
-        if tile_averaging == "pos_avg":
-            # aggregate the MoCo features by taking the mean for every sample
-            temp = np.empty([0, X_test.shape[1]])
-            for sample in samples_test[::1000]:
-                features = np.nanmean(X_test[samples_test == sample], axis=0)
-                temp = np.vstack((temp, features))
-            X_test = np.where(np.isnan(temp), 0, temp)
-        elif tile_averaging == "avg":
-            # aggregate the MoCo features by taking the mean for every sample
-            X_test = [
-                np.mean(X_test[samples_test == sample], axis=0)
+        # aggregate the MoCo features by taking the mean for every sample
+        X_test = [
+                np.nanmean(X_test[samples_test == sample], axis=0)
                 for sample in samples_test[::1000]
             ]
-            X_test = np.array(X_test)
+        X_test = np.array(X_test)
+        X_test = np.where(np.isnan(X_test), 0, X_test)
 
         # reduce the oversampled arrays
         patients_test = patients_test[::1000]
@@ -207,18 +228,24 @@ def pred_aggregation(
     This function aggregates predicted or true values by some aggregation form (e.g. mean)
     and over some common feature, e.g. samples id or patient id.
     """
+    # get unique values
     agg_unique = np.unique(agg_over)
 
+    # take the mean of predictions
     if agg_by == "mean":
         preds = {sample: [np.mean(values[agg_over == sample])] for sample in agg_unique}
+    # take the median of predictions
     elif agg_by == "median":
         preds = {
             sample: [np.median(values[agg_over == sample])] for sample in agg_unique
         }
+    # take the maximum of predictions
     elif agg_by == "max":
         preds = {sample: [np.max(values[agg_over == sample])] for sample in agg_unique}
+    # take the minimum of predictions
     elif agg_by == "min":
         preds = {sample: [np.min(values[agg_over == sample])] for sample in agg_unique}
+    # take an upper percentile mean of predictions
     elif agg_by.startswith("mean_"):
         bound = int(agg_by.split("_")[1]) / 100
         preds = {}
@@ -227,6 +254,7 @@ def pred_aggregation(
             idx = (-temp).argsort()[: math.ceil(len(temp) * bound)]
             preds[sample] = [np.mean(temp[idx])]
 
+    # create dataframe with aggregated predictions
     df = pd.DataFrame(preds)
     df = df.transpose().reset_index()
     df.columns = ["Sample ID", "Target"]
