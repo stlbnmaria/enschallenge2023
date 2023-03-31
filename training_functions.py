@@ -1,183 +1,300 @@
+import os
+from datetime import datetime
 from pathlib import Path
 
+import math
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import GroupKFold, ParameterGrid, train_test_split
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.metrics import roc_auc_score
+from sklearn.base import clone
+from sklearn.ensemble import StackingClassifier
 
-from modeling.tabular_models import get_tabular_estimator
-
-
-# TODO: aggregate classifier differently? - e.g. instead of average use second layer model
-# TODO: incorporate the different centers to take into account heterogenity
-# TODO: try different ML models and tune them
+from modeling.tabular_models import get_tabular_estimator, read_grid_tuning
+from utils import pred_aggregation, load_mocov_train_data
 
 
-def load_mocov_train_data(data_path=Path("./storage/"), tile_averaging: bool=True):
-    """
-    This function loads the MoCov features full file for training and
-    performs averaging over the tiles per sample as default.
-    """
-    input = np.load(data_path / "train_input" / "mocov_features_train.npz")
-    metadata = input["metadata"]
-    feat = input["features"].astype(float)
-    y_train = metadata[:, 0].astype(float)
-    patients_train = metadata[:, 1]
-    samples_train = metadata[:, 2]
-    centers_train = metadata[:, 3]
-
-    if tile_averaging:
-        X_train = [np.mean(feat[samples_train == sample], axis=0) for sample in np.unique(samples_train)]
-        X_train = np.array(X_train)
-
-        y_train = [np.unique(y_train[samples_train == sample]) for sample in np.unique(samples_train)]
-        y_train = np.array(y_train).flatten()
-
-        patients_train = [np.unique(patients_train[samples_train == sample]) for sample in np.unique(samples_train)]
-        patients_train = np.array(patients_train).flatten()
-
-        centers_train = [np.unique(centers_train[samples_train == sample]) for sample in np.unique(samples_train)]
-        centers_train = np.array(centers_train)
-
-        samples_train = np.unique(samples_train)
-    else:
-        X_train = feat
-
-    patients_unique = np.unique(patients_train)
-    y_unique = np.array(
-        [np.mean(y_train[patients_train == p]) for p in patients_unique]
-    )
-
-    return X_train, y_train, patients_unique, y_unique, patients_train, samples_train
-
-
+@ignore_warnings(category=ConvergenceWarning)
 def train_mocov_features(
-    model, X_train, y_train, patients_unique, y_unique, patients_train, samples_train, tile_avg: bool = True,
-):
+    model,
+    X_train,
+    y_train,
+    samples_train,
+    centers_train,
+    agg_by: str = "mean",
+    tile_avg: str = None,
+) -> list:
     """
-    This function trains any model of 5-fold cv on the mocov features 
+    This function trains any model of 3-fold center cv on the mocov features
     and returns a list of models (one for every fold).
     """
     aucs = []
     lrs = []
-    # 5-fold CV
-    kfold = StratifiedKFold(5, shuffle=True, random_state=72)
-    fold = 0
-    # split is performed at the patient-level
-    for train_idx_, val_idx_ in kfold.split(patients_unique, y_unique):
-        # retrieve the indexes of the samples corresponding to the
-        # patients in `train_idx_` and `test_idx_`
-        train_idx = np.arange(len(X_train))[
-            pd.Series(patients_train).isin(patients_unique[train_idx_])
-        ]
-        val_idx = np.arange(len(X_train))[
-            pd.Series(patients_train).isin(patients_unique[val_idx_])
-        ]
-        # set the training and validation folds
-        X_fold_train = X_train[train_idx]
-        y_fold_train = y_train[train_idx]
-        X_fold_val = X_train[val_idx]
-        y_fold_val = y_train[val_idx]
+
+    # split is performed at the center level
+    kfold = GroupKFold(n_splits=3)
+    for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
+        # set the training and validation data
+        X_fold_train = X_train[train_idx_]
+        y_fold_train = y_train[train_idx_]
+        samples_fold = samples_train[train_idx_]
+        X_fold_val = X_train[val_idx_]
+        y_fold_val = y_train[val_idx_]
+        val_center = np.unique(centers_train[val_idx_])[0]
+
         # instantiate the model
-        lr = model
-        # fit it
-        lr.fit(X_fold_train, y_fold_train)
+        lr = clone(model)
+        lr = lr.fit(X_fold_train, y_fold_train)
 
         # get the predictions (1-d probability)
+        preds_train = lr.predict_proba(X_fold_train)[:, 1]
         preds_val = lr.predict_proba(X_fold_val)[:, 1]
 
-        if not tile_avg:
-            samples_val = samples_train[val_idx]
-            preds_val = [np.mean(preds_val[samples_val == sample]) for sample in np.unique(samples_val)]
-            y_fold_val = [np.mean(y_fold_val[samples_val == sample]) for sample in np.unique(samples_val)]
+        # compute sample level predictions if MoCo features are not aggregated
+        if tile_avg is None:
+            preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
+            y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
+            train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
+            preds_train = train_y["Target_y"]
+            y_fold_train = train_y["Target_x"]
+
+            samples_val = samples_train[val_idx_]
+            preds_val = pred_aggregation(preds_val, samples_val, agg_by)
+            y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
+            val_y = pd.merge(y_fold_val, preds_val, on="Sample ID")
+            preds_val = val_y["Target_y"]
+            y_fold_val = val_y["Target_x"]
 
         # compute the AUC score using scikit-learn
-        auc = roc_auc_score(y_fold_val, preds_val)
-        print(f"AUC on fold {fold}: {auc:.3f}")
-        aucs.append(auc)
-        # add the logistic regression to the list of classifiers
+        train_auc = roc_auc_score(y_fold_train, preds_train)
+        test_auc = roc_auc_score(y_fold_val, preds_val)
+        print(
+            f"AUC on validation center {val_center}: Train - {train_auc:.3f}, Val - {test_auc:.3f}"
+        )
+        # add AUC und classifier to list
+        aucs.append(test_auc)
         lrs.append(lr)
-        fold += 1
     print("----------------------------")
     print(
-        f"5-fold cross-validated AUC averaged: "
+        f"3-fold cross-validated AUC averaged: "
         f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
     )
     return lrs
 
 
-def load_mocov_test_data(data_path=Path("./storage/"), tile_averaging: bool=True):
+def train_tabular(
+    model: str,
+    agg_by: str,
+    tile_avg: str = None,
+    scaling: str = None,
+    drop: bool = True,
+    feat_select: bool = True,
+    n_jobs: int = 6,
+    data_path=Path("./storage/"),
+) -> list:
     """
-    This function loads the MoCov features full file for testing and
-    performs averaging over the tiles per sample as default.
+    This function initilializes training for the tabular data.
     """
-    input = np.load(data_path / "test_input" / "mocov_features_test.npz")
-    metadata = input["metadata"]
-    feat = input["features"].astype(float)
-    patients_test = metadata[:, 0]
-    samples_test = metadata[:, 1]
-    centers_test = metadata[:, 2]
+    # get estimator and set params with grid
+    grid = read_grid_tuning()
+    estimator = get_tabular_estimator(model, n_jobs)
+    if grid is not None:
+        estimator.set_params(**grid)
 
-    if tile_averaging:
-        X_test = [np.mean(feat[samples_test == sample], axis=0) for sample in np.unique(samples_test)]
-        X_test = np.array(X_test)
-
-        patients_test = [np.unique(patients_test[samples_test == sample]) for sample in np.unique(samples_test)]
-        patients_test = np.array(patients_test).flatten()
-
-        centers_test = [np.unique(centers_test[samples_test == sample]) for sample in np.unique(samples_test)]
-        centers_test = np.array(centers_test)
-
-        samples_test = np.unique(samples_test)
-    else:
-        X_test = feat
-
-    patients_unique = np.unique(patients_test)
-
-    return X_test, patients_unique, patients_test, samples_test
-
-
-def predict_cv_classifiers(lrs: list, tile_avg: bool = True,):
-    """
-    This function takes a list of classifiers trained on crossvalidation,
-    predicts the target for every cv-classifier and averages over this
-    prediction to create the final prediction.
-    """
-    X_test, _, _, samples_test = load_mocov_test_data(tile_averaging=tile_avg)
-    samples_unique = np.unique(samples_test)
-
-    preds_test = 0
-    # loop over the classifiers
-    for lr in lrs:
-        if tile_avg:
-            preds_test += lr.predict_proba(X_test)[:, 1]
-        else:
-            temp = lr.predict_proba(X_test)[:, 1]
-            temp = np.array([np.mean(temp[samples_test == sample]) for sample in samples_unique])
-            assert temp.shape[0] == (149)
-            preds_test += temp
-
-    # and take the average (ensembling technique)
-    preds_test = preds_test / len(lrs)
-    return preds_test
-
-
-def train_tabular(model: str):
-    """
-    This function trains the tabular data.
-    """
-    estimator = get_tabular_estimator(model)
-
-    (
+    # load the train data
+    (X_train, y_train, _, samples_train, centers_train,) = load_mocov_train_data(
+        data_path=data_path,
+        tile_averaging=tile_avg,
+        scaling=scaling,
+        drop_dupes=drop,
+        feat_select=feat_select,
+    )
+    # perform training and extract cv classifiers
+    lrs = train_mocov_features(
+        estimator,
         X_train,
         y_train,
-        patients_unique,
-        y_unique,
-        patients_train,
         samples_train,
-    ) = load_mocov_train_data(tile_averaging=False)
-    lrs = train_mocov_features(
-        estimator, X_train, y_train, patients_unique, y_unique, patients_train, samples_train, tile_avg=False
+        centers_train,
+        agg_by,
+        tile_avg=tile_avg,
     )
-    preds = predict_cv_classifiers(lrs, tile_avg=False)
-    return preds
+    return lrs
+
+
+@ignore_warnings(category=ConvergenceWarning)
+def tuning_moco(
+    model: str,
+    agg_by: str = "mean",
+    tile_avg: str = None,
+    scaling: str = None,
+    drop: bool = True,
+    feat_select: bool = True,
+    n_jobs: int = 6,
+    data_path=Path("./storage/"),
+    file_name: str = "cv_results",
+) -> None:
+    """
+    This function performs grid tuning for an estimator and saves the results in a subfolder of modeling.
+    """
+    # define the input varibales
+    (X_train, y_train, _, samples_train, centers_train,) = load_mocov_train_data(
+        data_path=data_path,
+        tile_averaging=tile_avg,
+        scaling=scaling,
+        drop_dupes=drop,
+        feat_select=feat_select,
+    )
+    grid = ParameterGrid(read_grid_tuning())
+    out_path = os.path.join("./modeling", model)
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+    timestamp = datetime.today().strftime("%Y%m%d_%H%M")
+    cv_results = {
+        "grid": [],
+        "train_AUC_C2_C5": [],
+        "train_AUC_C1_C2": [],
+        "train_AUC_C1_C5": [],
+        "val_AUC_C1": [],
+        "val_AUC_C5": [],
+        "val_AUC_C2": [],
+    }
+
+    print(f"Started tuning for {model} with grid of size: {len(grid)}")
+    for hyp in grid:
+        # get estimator and set params, append params to results
+        estimator = get_tabular_estimator(model, n_jobs)
+        estimator.set_params(**hyp)
+        cv_results["grid"].append(hyp)
+
+        # cv split is performed at the center level
+        kfold = GroupKFold(n_splits=3)
+        for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
+            # set the training and validation folds
+            X_fold_train = X_train[train_idx_]
+            y_fold_train = y_train[train_idx_]
+            samples_fold = samples_train[train_idx_]
+            X_fold_val = X_train[val_idx_]
+            y_fold_val = y_train[val_idx_]
+            samples_val = samples_train[val_idx_]
+            val_center = np.unique(centers_train[val_idx_])[0].replace("_", "")
+
+            # fit the model
+            estimator.fit(X_fold_train, y_fold_train)
+
+            # get the predictions (1-d probability)
+            preds_train = estimator.predict_proba(X_fold_train)[:, 1]
+            preds_val = estimator.predict_proba(X_fold_val)[:, 1]
+
+            # compute sample level predictions if MoCo features are not aggregated
+            if tile_avg is None:
+                preds_train = pred_aggregation(preds_train, samples_fold, agg_by)
+                y_fold_train = pred_aggregation(y_fold_train, samples_fold, agg_by)
+                train_y = pd.merge(y_fold_train, preds_train, on="Sample ID")
+                preds_train = train_y["Target_y"]
+                y_fold_train = train_y["Target_x"]
+
+                preds_val = pred_aggregation(preds_val, samples_val, agg_by)
+                y_fold_val = pred_aggregation(y_fold_val, samples_val, agg_by)
+                val_y = pd.merge(y_fold_val, preds_val, on="Sample ID")
+                preds_val = val_y["Target_y"]
+                y_fold_val = val_y["Target_x"]
+
+            # compute the AUC score using scikit-learn
+            train_auc = roc_auc_score(y_fold_train, preds_train)
+            test_auc = roc_auc_score(y_fold_val, preds_val)
+
+            # append cv results
+            train_centers = {"C1": "C2_C5", "C2": "C1_C5", "C5": "C1_C2"}
+            cv_results["train_AUC_" + train_centers[val_center]].append(train_auc)
+            cv_results["val_AUC_" + val_center].append(test_auc)
+
+        # saving cv_results at every round of the grid
+        results = pd.DataFrame(cv_results)
+        results["train_AUC_mean"] = results[
+            ["train_AUC_C2_C5", "train_AUC_C1_C2", "train_AUC_C1_C5"]
+        ].mean(axis=1)
+        results["val_AUC_mean"] = results[
+            ["val_AUC_C1", "val_AUC_C2", "val_AUC_C5"]
+        ].mean(axis=1)
+        results.to_csv(
+            os.path.join(out_path, f"{timestamp}_{file_name}.csv"), index=False
+        )
+
+        print(f"Done with tuning iteration {list(grid).index(hyp) + 1} / {len(grid)}")
+
+    print(f"----------- GridSearchCV results saved successfully-----------")
+
+    best_val_score = max(results["val_AUC_mean"])
+    print(f"----------- Best avg. validation AUC: {best_val_score:.3f} -----------")
+
+
+@ignore_warnings(category=ConvergenceWarning)
+def stacking_estimators(
+    models: list,
+    tile_avg: str = None,
+    scaling: str = None,
+    drop: bool = True,
+    feat_select: bool = True,
+    n_jobs: int = 6,
+    data_path=Path("./storage/"),
+) -> list:
+    """
+    This function trains a stacked generalization with 90% of the data used for the base
+    models and 10% for the second layer. It returns a list of stacked generalizations for a
+    center fold cv split.
+    """
+    # load the train data
+    (X_train, y_train, _, _, centers_train) = load_mocov_train_data(
+        data_path=data_path,
+        tile_averaging=tile_avg,
+        scaling=scaling,
+        drop_dupes=drop,
+        feat_select=feat_select,
+    )
+    aucs = []
+    lrs = []
+    estimators = [(model, get_tabular_estimator(model, n_jobs)) for model in models]
+
+    # split is performed at the center level
+    kfold = GroupKFold(n_splits=3)
+    for train_idx_, val_idx_ in kfold.split(X_train, y_train, centers_train):
+        # get the 90-10 training split for the center fold train data to fit model
+        X_base, X_second, y_base, y_second = train_test_split(
+            X_train[train_idx_],
+            y_train[train_idx_],
+            test_size=0.1,
+            random_state=0,
+            stratify=centers_train[train_idx_],
+        )
+        # set validation data
+        X_fold_val = X_train[val_idx_]
+        y_fold_val = y_train[val_idx_]
+        val_center = np.unique(centers_train[val_idx_])[0]
+
+        # fit the base models and second layer
+        estimators = [
+            (model[0], clone(model[1]).fit(X_base, y_base)) for model in estimators
+        ]
+        stack = StackingClassifier(
+            estimators, cv="prefit", stack_method="predict_proba"
+        )
+        stack.fit(X_second, y_second)
+
+        # get the predictions (1-d probability)
+        preds_val = stack.predict_proba(X_fold_val)[:, 1]
+
+        # compute the AUC score using scikit-learn
+        test_auc = roc_auc_score(y_fold_val, preds_val)
+        print(f"AUC validation center {val_center}: Val - {test_auc:.3f}")
+        # add AUC and classifier to lists
+        aucs.append(test_auc)
+        lrs.append(stack)
+    print("----------------------------")
+    print(
+        f"3-fold cross-validated AUC averaged: "
+        f"{np.mean(aucs):.3f} ({np.std(aucs):.3f})"
+    )
+    return lrs

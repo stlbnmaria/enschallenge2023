@@ -20,6 +20,7 @@ def write_mocov_train(data_path=Path("../storage")):
     centers_train = np.empty([])
     patients_train = np.empty([])
     samples_train = np.empty([])
+    coords = np.empty([])
 
     for sample, label, center, patient in tqdm(
         metadata[["Sample ID", "Target", "Center ID", "Patient ID"]].values
@@ -28,7 +29,7 @@ def write_mocov_train(data_path=Path("../storage")):
         _features = np.load(train_features_dir / sample)
         # get coordinates (zoom level, tile x-coord on the slide, tile y-coord on the slide)
         # and the MoCo V2 features
-        _, features = _features[:, :3], _features[:, 3:]  # Ks
+        coord, features = _features[:, :3], _features[:, 3:]  # Ks
 
         n = features.shape[0]
         X_train = np.vstack((X_train, features))
@@ -36,10 +37,17 @@ def write_mocov_train(data_path=Path("../storage")):
         centers_train = np.hstack((centers_train, [center] * n))
         patients_train = np.hstack((patients_train, [patient] * n))
         samples_train = np.hstack((samples_train, [sample] * n))
+        coords = np.hstack((coords, coord[:, 0]))
 
     # store csv
     output = np.vstack(
-        (y_train[1:], patients_train[1:], samples_train[1:], centers_train[1:])
+        (
+            y_train[1:],
+            patients_train[1:],
+            samples_train[1:],
+            centers_train[1:],
+            coords[1:],
+        )
     ).T
     np.savez_compressed(
         data_path / "train_input" / "mocov_features_train",
@@ -63,6 +71,7 @@ def write_mocov_test(data_path=Path("../storage")):
     centers_train = np.empty([])
     patients_train = np.empty([])
     samples_train = np.empty([])
+    coords = np.empty([])
 
     for sample, center, patient in tqdm(
         metadata[["Sample ID", "Center ID", "Patient ID"]].values
@@ -71,16 +80,19 @@ def write_mocov_test(data_path=Path("../storage")):
         _features = np.load(features_dir / sample)
         # get coordinates (zoom level, tile x-coord on the slide, tile y-coord on the slide)
         # and the MoCo V2 features
-        _, features = _features[:, :3], _features[:, 3:]  # Ks
+        coord, features = _features[:, :3], _features[:, 3:]  # Ks
 
         n = features.shape[0]
         X_train = np.vstack((X_train, features))
         centers_train = np.hstack((centers_train, [center] * n))
         patients_train = np.hstack((patients_train, [patient] * n))
         samples_train = np.hstack((samples_train, [sample] * n))
+        coords = np.hstack((coords, coord[:, 0]))
 
     # store csv
-    output = np.vstack((patients_train[1:], samples_train[1:], centers_train[1:])).T
+    output = np.vstack(
+        (patients_train[1:], samples_train[1:], centers_train[1:], coords[1:])
+    ).T
     np.savez_compressed(
         data_path / "test_input" / "mocov_features_test",
         metadata=output,

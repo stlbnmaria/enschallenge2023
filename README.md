@@ -65,16 +65,17 @@ $$AUC = \frac{1}{N_0N_1}\sum_{i \in I_1}\sum_{j \in I_0}1_{\tilde{y}_i > \tilde{
 where $I_1$ is the set of indices of the N₁ patients with label 1 (presence of mutation), $I_0$ the set of indices of the $N_0$ patients with label 0 and $\tilde{y}_i$ the predicted mutation probability for sample i. A score of 0.5 represents a random prediction and a score of 1.0 represents perfect predictions.
 
 
-## Possibly useful Papers
-- Identify PIK3CA Mutation Status in Breast Cancer on Ultrasound Image (2022): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9204315/
-- A weakly supervised deep learning-based method for glioma subtype classification using WSI and mpMRIs (2022): https://www.nature.com/articles/s41598-022-09985-1
-- Benchmarking weakly-supervised deep learning pipelines for whole slide classification in computational pathology (2022): https://www.sciencedirect.com/science/article/pii/S1361841522001219
-- Development and validation of a weakly supervised deep learning framework to predict the status of molecular pathways and key mutations in colorectal cancer from routine histology images: a retrospective study (2021): https://www.sciencedirect.com/science/article/pii/S2589750021001801
-- Multiple instance learning for histopathological breast cancer image classification (2019): https://www.sciencedirect.com/science/article/pii/S0957417418306262
+## Results
+The final models used a center wise standard scaling, feature selection according to the feature importance of a Catboost model for three cv folds, manual selection of duplicates for center five and positive averaging over the MoCo features per sample. The best generalization performance on the public test was achieved by a Random Forest. 
 
-- Prediction of clinically actionable genetic alterations from colorectal cancer histopathology images (2020): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7596644/
-- Prediction of genetic alterations from gastric cancer histopathology images (2021): https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8641056/
-- Optimization of deep learning models for the prediction of gene mutations using unsupervised clustering (2022): https://onlinelibrary.wiley.com/doi/full/10.1002/cjp2.302
-
-## Latex Report
-https://www.overleaf.com/project/63e22705159f324cc7095314
+| Model | Center 1 | Center 2 | Center 5 | Average (std) | Test
+| ----------- | ----------- | ----------- | ----------- | ----------- | ----------- |
+Stacking | 0.73 | 0.74 | 0.81 |  0.76 (0.03) | 0.64
+SVM | 0.73 | 0.72 | 0.82 | 0.76 (0.05) | 0.64
+Extra Trees | 0.69 | 0.77 | 0.76 | 0.74 (0.04) | 0.63
+Logistic Regression | 0.71 | 0.69 | 0.81 | 0.74 (0.05) | 0.56
+Catboost | 0.68 | 0.73 | 0.79 | 0.73 (0.05) | 0.66
+Random Forest | 0.70 | 0.72 | 0.73 | 0.72 (0.01) | 0.71
+XGBoost | 0.63 | 0.74 | 0.76 | 0.71 (0.06) | 0.60
+LightGBM | 0.61 | 0.76 | 0.73 | 0.70 (0.07) | 0.64
+Baseline | - | - | - | 0.58 (0.09) | 0.60
